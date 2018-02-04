@@ -1,6 +1,6 @@
 # BBB-Server
 
-This resource was initially cloned from (apollo-starter-kit)[https://github.com/apollostack/apollo-starter-kit] and modified according to this (tutorial)[https://medium.com/apollo-stack/tutorial-building-a-graphql-server-cddaa023c035#.wy5h1htxs)].
+This resource was initially cloned from [apollo-starter-kit](https://github.com/apollostack/apollo-starter-kit) and modified according to this [tutorial](https://medium.com/apollo-stack/tutorial-building-a-graphql-server-cddaa023c035#.wy5h1htxs).
 
 ## Getting started
 
