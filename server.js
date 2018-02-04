@@ -1,3 +1,7 @@
+if (process.env.NODE_ENV !== 'production') {
+  // In production, the production environment should control these variables.
+  require('dotenv').load();
+}
 import express from 'express';
 import { graphqlExpress, graphiqlExpress } from 'apollo-server-express';
 import bodyParser from 'body-parser';
@@ -5,8 +9,9 @@ import schema from './data/schema';
 import compression from 'compression';
 import { Engine } from 'apollo-engine';
 
+
 const GRAPHQL_PORT = 3000;
-const ENGINE_API_KEY = 'service:sunwukonga-3880:ESftuHpWQvjcR4ZR3E4xuQ';
+const ENGINE_API_KEY = process.env.ENGINE_API_KEY;
 
 const engine = new Engine({
     engineConfig: {
