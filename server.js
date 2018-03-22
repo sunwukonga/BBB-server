@@ -1,6 +1,8 @@
+import dotenv from 'dotenv';
 if (process.env.NODE_ENV !== 'production') {
   // In production, the production environment should control these variables.
-  require('dotenv').load();
+  dotenv.config();
+  //require('dotenv').load();
 }
 import express from 'express';
 import { graphqlExpress, graphiqlExpress } from 'apollo-server-express';
@@ -8,7 +10,18 @@ import bodyParser from 'body-parser';
 import schema from './data/schema';
 import compression from 'compression';
 import { Engine } from 'apollo-engine';
+import { formatError } from 'apollo-errors';
+//import jwt from 'jwt-express';
+const jwt = require('express-jwt');
+const jwtDecode = require('jwt-decode');
+//import jwt_decode from 'jwt-decode';
 
+const jwtMiddleware = jwt({ secret: process.env.JWT_SECRET_KEY });
+//const getUserFromJwt = (req, res, next) => {
+//  const authHeader = req.headers.authorization;
+//  req.test = jwtDecode(authHeader);
+//  next();
+//}
 
 const GRAPHQL_PORT = 3000;
 const ENGINE_API_KEY = process.env.ENGINE_API_KEY;
@@ -35,10 +48,29 @@ const graphQLServer = express();
 // This must be the first middleware
 graphQLServer.use(engine.expressMiddleware());
 graphQLServer.use(compression());
-graphQLServer.use('/graphql', bodyParser.json(), graphqlExpress({ schema
-                                                                , tracing: true
-                                                                , cacheControl: true
-                                                                }));
+//jwt takes authorization header and puts decoded token in req.user
+graphQLServer.use(
+  jwt({
+      secret: process.env.JWT_SECRET_KEY
+    , credentialsRequired: false
+  }).unless({
+      path: ['/graphiql']
+  })
+);
+graphQLServer.use(
+    '/graphql'
+  , bodyParser.json()
+  , graphqlExpress(req => {
+      return {
+          schema: schema
+        , formatError: formatError
+        , tracing: true
+        , cacheControl: true
+        , context: {
+              user: req.user
+            , test: req.test
+      }};
+    }));
 graphQLServer.use('/graphiql', graphiqlExpress({ endpointURL: '/graphql' }));
 
 graphQLServer.listen(GRAPHQL_PORT, () =>
