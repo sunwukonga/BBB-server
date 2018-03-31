@@ -77,6 +77,9 @@ type Listing {
   user: User
 }
 
+type LogStatus {
+  result: String
+}
 
 type SaleMode {
   mode: String

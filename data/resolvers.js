@@ -1,4 +1,4 @@
-import { User, Listing, View, OnlineStatus, Country, Image, FortuneCookie } from './connectors';
+import { User, Listing, View, OnlineStatus, Country, Image, FortuneCookie, Facebook } from './connectors';
 import { createError, isInstance } from 'apollo-errors';
 
 const FooError = createError('FooError', {

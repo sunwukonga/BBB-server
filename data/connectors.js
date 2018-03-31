@@ -25,8 +25,8 @@ const Facebook = {
         //   use redirect=0 to get JSON description (incl. url) instead of image itself
         //   USE ALL info to create a NEW user if the facebookId is not found.
         //   RETURN our jwt token with authorization and user info encoded
-        console.log('Facebook response: ' + res);
-        return 'testing';
+        console.log(res);
+        return 'Dummy response in place of valid jwt token';
         //return res[0].fortune.message;
       });
   },
@@ -200,4 +200,4 @@ const Image = db.models.image;
 const View = Mongoose.model('views', ViewSchema);
 const OnlineStatus = Mongoose.model('onlineStatus', OnlineSchema);
 
-export { User, Listing, View, OnlineStatus, Country, Image, FortuneCookie };
+export { User, Listing, View, OnlineStatus, Country, Image, FortuneCookie, Facebook };
