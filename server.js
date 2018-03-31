@@ -12,16 +12,22 @@ import compression from 'compression';
 import { Engine } from 'apollo-engine';
 import { formatError } from 'apollo-errors';
 //import jwt from 'jwt-express';
-const jwt = require('express-jwt');
+//const jwt = require('jsonwebtoken');
+import jwt from 'jsonwebtoken';
+const expressJWT = require('express-jwt');
 const jwtDecode = require('jwt-decode');
 //import jwt_decode from 'jwt-decode';
 
-const jwtMiddleware = jwt({ secret: process.env.JWT_SECRET_KEY });
+const jwtMiddleware = expressJWT({ secret: process.env.JWT_SECRET_KEY });
 //const getUserFromJwt = (req, res, next) => {
 //  const authHeader = req.headers.authorization;
 //  req.test = jwtDecode(authHeader);
 //  next();
 //}
+const token = jwt.sign({ foo: 'bar' }, 'shhhhh');
+console.log('Token: ' + token);
+console.log('Decoded: ' + jwtDecode(token));
+console.log(jwtDecode(token));
 
 const GRAPHQL_PORT = 3000;
 const ENGINE_API_KEY = process.env.ENGINE_API_KEY;
@@ -50,7 +56,7 @@ graphQLServer.use(engine.expressMiddleware());
 graphQLServer.use(compression());
 //jwt takes authorization header and puts decoded token in req.user
 graphQLServer.use(
-  jwt({
+  expressJWT({
       secret: process.env.JWT_SECRET_KEY
     , credentialsRequired: false
   }).unless({
