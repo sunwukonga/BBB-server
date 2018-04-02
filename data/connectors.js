@@ -16,13 +16,10 @@ const FortuneCookie = {
 
 const Facebook = {
   login( args ) {
-    return fetch(`https://graph.facebook.com/me?access_token=${args.token}`)
+    return fetch(`https://graph.facebook.com/me?access_token=${args.token}&fields=id,name,email,picture`)
       .then(res => res.json())
       .then(res => {
         // What needs to happen here:
-        //   get profile 
-        //   Square photo https://graph.facebook.com/{facebookId}/picture?type=square
-        //   use redirect=0 to get JSON description (incl. url) instead of image itself
         //   USE ALL info to create a NEW user if the facebookId is not found.
         //   RETURN our jwt token with authorization and user info encoded
         console.log(res);
