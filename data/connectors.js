@@ -17,15 +17,7 @@ const FortuneCookie = {
 const Facebook = {
   login( args ) {
     return fetch(`https://graph.facebook.com/me?access_token=${args.token}&fields=id,name,email,picture`)
-      .then(res => res.json())
-      .then(res => {
-        // What needs to happen here:
-        //   USE ALL info to create a NEW user if the facebookId is not found.
-        //   RETURN our jwt token with authorization and user info encoded
-        console.log(res);
-        return 'Dummy response in place of valid jwt token';
-        //return res[0].fortune.message;
-      });
+      .then(res => { return res.json() });
   },
 };
 
@@ -48,6 +40,7 @@ const UserModel = db.define('user', {
   idVerification: { type: Sequelize.TINYINT },
   sellerRating: { type: Sequelize.TINYINT },
   sellerRatingCount: { type: Sequelize.INTEGER },
+  token: { type: Sequelize.STRING },
 });
 
 const ListingModel = db.define('listing', {
@@ -85,9 +78,16 @@ const LocationModel = db.define('location', {
 
 const EmailModel = db.define('email', {
   email: { type: Sequelize.STRING },
-  primary: { type: Sequelize.BOOLEAN },
-  verified: { type: Sequelize.BOOLEAN },
+  primary: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false },
+  verified: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false },
   //TODO: probably needs a verification code to match against.
+});
+const OauthModel = db.define('oauth', {
+  provider: { type: Sequelize.STRING, allowNull: false },
+  uid: { type: Sequelize.STRING, allowNull: false },
+  name: { type: Sequelize.STRING },
+  email: { type: Sequelize.STRING },
+  picture: { type: Sequelize.STRING },
 });
 
 // Later associate images with templates
@@ -115,6 +115,7 @@ ListingModel.belongsTo(UserModel);
 UserModel.belongsToMany(ListingModel, {as: 'Like', through: 'listingLikes'}); // UserModel.createLike, getLikes, setLikes, addLike,addLikes
 CountryModel.hasMany(UserModel, {as: 'User', foreignKey: 'country'});
 UserModel.hasMany(EmailModel);
+UserModel.hasMany(OauthModel);
 UserModel.belongsTo(ImageModel, {as: 'profileImage'});
 //UserModel.belongsTo(CountryModel, {foreignKey: 'country', targetKey: 'isoCode'});
 // Listing Model

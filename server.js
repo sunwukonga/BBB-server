@@ -74,7 +74,7 @@ graphQLServer.use(
         , cacheControl: true
         , context: {
               user: req.user
-            , test: req.test
+//            , test: req.test
       }};
     }));
 graphQLServer.use('/graphiql', graphiqlExpress({ endpointURL: '/graphql' }));
