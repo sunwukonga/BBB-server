@@ -199,4 +199,14 @@ const Oauth = db.models.oauth;
 const View = Mongoose.model('views', ViewSchema);
 const OnlineStatus = Mongoose.model('onlineStatus', OnlineSchema);
 
-export { User, Listing, View, OnlineStatus, Country, Image, FortuneCookie, Facebook };
+export {
+   User
+ , Listing
+ , View
+ , OnlineStatus
+ , Country
+ , Image
+ , FortuneCookie
+ , Facebook
+ , Oauth
+};
