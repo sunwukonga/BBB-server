@@ -196,6 +196,7 @@ const Listing = db.models.listing;
 const Country = db.models.country;
 const Image = db.models.image;
 const Oauth = db.models.oauth;
+const Email = db.models.email;
 const View = Mongoose.model('views', ViewSchema);
 const OnlineStatus = Mongoose.model('onlineStatus', OnlineSchema);
 
@@ -209,4 +210,5 @@ export {
  , FortuneCookie
  , Facebook
  , Oauth
+ , Email
 };

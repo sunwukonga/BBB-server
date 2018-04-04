@@ -1,7 +1,18 @@
-import { User, Listing, View, OnlineStatus, Country, Image, FortuneCookie, Facebook, Oauth } from './connectors';
 import { createError, isInstance } from 'apollo-errors';
 import { Providers } from './constants/';
 import jwt from 'jsonwebtoken';
+import {
+    User
+  , Listing
+  , View
+  , OnlineStatus
+  , Country
+  , Image
+  , FortuneCookie
+  , Facebook
+  , Oauth
+  , Email
+} from './connectors';
 
 const FooError = createError('FooError', {
   message: 'A foo error has occurred'
