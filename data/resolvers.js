@@ -44,9 +44,6 @@ const resolvers = {
         })
       })
       .then( ([oauth, oauthCreated]) => {
-        console.log("Oauth then ...");
-        console.log(oauthCreated);
-        console.log(oauth);
         if (oauthCreated) {
           console.log("Oauth record was created.");
           return Email.findOrCreate({
@@ -55,7 +52,7 @@ const resolvers = {
                   primary: true
               }
           })
-          .then( (email, emailCreated) => {
+          .then( ([email, emailCreated]) => {
             if (emailCreated) {
               // Email didn't exist, therefore no user existed. Create new.
               console.log("Email didn't exist AND was created");
@@ -64,7 +61,7 @@ const resolvers = {
                 lastName: names.join(' '),
                 profileName: res.name.replace(/\s+/g, ''),
               })
-              .then( (user, userCreated) => {
+              .then( ([user, userCreated]) => {
                 if (! userCreated) {
                   throw new Error("Email created, but user already existed! Possible duplicate facebook name. Try a different login provider.");
                 }
