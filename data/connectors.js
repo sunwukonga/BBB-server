@@ -195,6 +195,7 @@ const User = db.models.user;
 const Listing = db.models.listing;
 const Country = db.models.country;
 const Image = db.models.image;
+const Oauth = db.models.oauth;
 const View = Mongoose.model('views', ViewSchema);
 const OnlineStatus = Mongoose.model('onlineStatus', OnlineSchema);
 
