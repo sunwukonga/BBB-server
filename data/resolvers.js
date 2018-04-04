@@ -1,6 +1,7 @@
 import { User, Listing, View, OnlineStatus, Country, Image, FortuneCookie, Facebook } from './connectors';
 import { createError, isInstance } from 'apollo-errors';
 import { Providers } from './constants/';
+import jwt from 'jsonwebtoken';
 
 const FooError = createError('FooError', {
   message: 'A foo error has occurred'
@@ -24,6 +25,7 @@ const resolvers = {
   },
   Mutation: {
     loginFacebook(_, args) {
+      console.log(res);
       var res = Facebook.login( args );
       var names = res.name.split(' ');
       if ( (typeof res.email == "undefined") || (! /@/g.test(res.email)) ) {
@@ -72,9 +74,14 @@ const resolvers = {
         }
       })
       var userToken = {
-        user: user.id,
+          "userid": user.id
+        , "role": [
+            {
+               "name": "GENERAL"
+            }
+          ]
       }
-      return JSON.stringify(userToken);
+      return jwt.sign( JSON.stringify(userToken), process.env.JWT_SECRET_KEY );
     },
   },
   User: {
