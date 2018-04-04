@@ -43,6 +43,8 @@ const resolvers = {
             }
         })
         .then( (oauth, oauthCreated) => {
+          console.log("Oauth then ...");
+          console.log(oauthCreated);
           if (oauthCreated) {
             console.log("Oauth record was created.");
             return Email.findOrCreate({
