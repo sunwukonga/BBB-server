@@ -25,7 +25,7 @@ const resolvers = {
   },
   Mutation: {
     loginFacebook(_, args) {
-      Facebook.login( args )
+      return Facebook.login( args )
       .then( res => {
         console.log(res);
         var names = res.name.split(' ');
@@ -64,13 +64,16 @@ const resolvers = {
                   user.addEmail(email).then( () => {
                     user.addOauth(oauth);
                   })
+                  .then( () => return user )
                 })
               } else {
                 // Email existed. Therefore it SHOULD be linked to an existing User. Link oauth to this user.
                 User.findOne({ id: email.userId })
                 .then( user => {
                   user.addOauth(oauth);
-                })}
+                  return user
+                })
+              }
             })
           }
         })
