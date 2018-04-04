@@ -42,60 +42,60 @@ const resolvers = {
               , picture: res.picture.data.url
             }
         })
-        .then( (oauth, oauthCreated) => {
-          console.log("Oauth then ...");
-          console.log(oauthCreated);
-          if (oauthCreated) {
-            console.log("Oauth record was created.");
-            return Email.findOrCreate({
-                where: { email: res.email }
-              , defaults: {
-                    primary: true
+      })
+      .then( (oauth, oauthCreated) => {
+        console.log("Oauth then ...");
+        console.log(oauthCreated);
+        if (oauthCreated) {
+          console.log("Oauth record was created.");
+          return Email.findOrCreate({
+              where: { email: res.email }
+            , defaults: {
+                  primary: true
+              }
+          })
+          .then( (email, emailCreated) => {
+            if (emailCreated) {
+              // Email didn't exist, therefore no user existed. Create new.
+              console.log("Email didn't exist AND was created");
+              return User.findOrCreate({
+                firstName: names.shift(),
+                lastName: names.join(' '),
+                profileName: res.name.replace(/\s+/g, ''),
+              })
+              .then( (user, userCreated) => {
+                if (! userCreated) {
+                  throw new Error("Email created, but user already existed! Possible duplicate facebook name. Try a different login provider.");
                 }
-            })
-            .then( (email, emailCreated) => {
-              if (emailCreated) {
-                // Email didn't exist, therefore no user existed. Create new.
-                console.log("Email didn't exist AND was created");
-                return User.findOrCreate({
-                  firstName: names.shift(),
-                  lastName: names.join(' '),
-                  profileName: res.name.replace(/\s+/g, ''),
-                })
-                .then( (user, userCreated) => {
-                  if (! userCreated) {
-                    throw new Error("Email created, but user already existed! Possible duplicate facebook name. Try a different login provider.");
-                  }
-                  console.log("User created");
-                  user.addEmail(email).then( () => {
-                    console.log("Add Email and Oauth to user");
-                    user.addOauth(oauth);
-                  })
-                  return user;
-                })
-              } else {
-                // Email existed. Therefore it SHOULD be linked to an existing User. Link oauth to this user.
-                return User.findOne({ id: email.userId })
-                .then( user => {
+                console.log("User created");
+                user.addEmail(email).then( () => {
+                  console.log("Add Email and Oauth to user");
                   user.addOauth(oauth);
-                  return user
                 })
-              }
-            }).then( user => {
-              console.log("Attempting to access user to create jwt token");
-              console.log(user);
-              var userToken = {
-                  "userid": user.id
-                , "role": [
-                    {
-                       "name": "GENERAL"
-                    }
-                  ]
-              }
-              return jwt.sign( JSON.stringify(userToken), process.env.JWT_SECRET_KEY );
-            })
-          }
-        })
+                return user;
+              })
+            } else {
+              // Email existed. Therefore it SHOULD be linked to an existing User. Link oauth to this user.
+              return User.findOne({ id: email.userId })
+              .then( user => {
+                user.addOauth(oauth);
+                return user
+              })
+            }
+          }).then( user => {
+            console.log("Attempting to access user to create jwt token");
+            console.log(user);
+            var userToken = {
+                "userid": user.id
+              , "role": [
+                  {
+                     "name": "GENERAL"
+                  }
+                ]
+            }
+            return jwt.sign( JSON.stringify(userToken), process.env.JWT_SECRET_KEY );
+          })
+        }
       })
     },
   },
