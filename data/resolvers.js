@@ -43,7 +43,7 @@ const resolvers = {
             }
         })
       })
-      .then( (oauth, oauthCreated) => {
+      .then( ([oauth, oauthCreated]) => {
         console.log("Oauth then ...");
         console.log(oauthCreated);
         console.log(oauth);
