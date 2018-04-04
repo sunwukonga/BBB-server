@@ -25,63 +25,65 @@ const resolvers = {
   },
   Mutation: {
     loginFacebook(_, args) {
-      console.log(res);
-      var res = Facebook.login( args );
-      var names = res.name.split(' ');
-      if ( (typeof res.email == "undefined") || (! /@/g.test(res.email)) ) {
-        throw new Error("Oauth provider did not supply email. Login aborted.");
-      }
-      Oauth.findOrCreate({
-          where: { uid: res.id }
-        , defaults: {
-              provider: Providers.Facebook
-            , name: res.name
-            , email: res.email
-            , picture: res.picture.data.url
-          }
-      })
-      .then( (oauth, oauthCreated) => {
-        if (oauthCreated) {
-          Email.findOrCreate({
-              where: { email: res.email }
-            , defaults: {
-                  primary: true
-              }
-          })
-          .then( (email, emailCreated) => {
-            if (emailCreated) {
-              // Email didn't exist, therefore no user existed. Create new.
-              User.findOrCreate({
-                firstName: names.shift(),
-                lastName: names.join(' '),
-                profileName: res.name.replace(/\s+/g, ''),
-              })
-              .then( (user, userCreated) => {
-                if (! userCreated) {
-                  throw new Error("Email created, but user already existed! Possible duplicate facebook name. Try a different login provider.");
-                }
-                user.addEmail(email).then( () => {
-                  user.addOauth(oauth);
-                })
-              })
-            } else {
-              // Email existed. Therefore it SHOULD be linked to an existing User. Link oauth to this user.
-              User.findOne({ id: email.userId })
-              .then( user => {
-                user.addOauth(oauth);
-              })}
-          })
+      Facebook.login( args )
+      .then( res => {
+        console.log(res);
+        var names = res.name.split(' ');
+        if ( (typeof res.email == "undefined") || (! /@/g.test(res.email)) ) {
+          throw new Error("Oauth provider did not supply email. Login aborted.");
         }
-      })
-      var userToken = {
-          "userid": user.id
-        , "role": [
-            {
-               "name": "GENERAL"
+        Oauth.findOrCreate({
+            where: { uid: res.id }
+          , defaults: {
+                provider: Providers.Facebook
+              , name: res.name
+              , email: res.email
+              , picture: res.picture.data.url
             }
-          ]
-      }
-      return jwt.sign( JSON.stringify(userToken), process.env.JWT_SECRET_KEY );
+        })
+        .then( (oauth, oauthCreated) => {
+          if (oauthCreated) {
+            Email.findOrCreate({
+                where: { email: res.email }
+              , defaults: {
+                    primary: true
+                }
+            })
+            .then( (email, emailCreated) => {
+              if (emailCreated) {
+                // Email didn't exist, therefore no user existed. Create new.
+                User.findOrCreate({
+                  firstName: names.shift(),
+                  lastName: names.join(' '),
+                  profileName: res.name.replace(/\s+/g, ''),
+                })
+                .then( (user, userCreated) => {
+                  if (! userCreated) {
+                    throw new Error("Email created, but user already existed! Possible duplicate facebook name. Try a different login provider.");
+                  }
+                  user.addEmail(email).then( () => {
+                    user.addOauth(oauth);
+                  })
+                })
+              } else {
+                // Email existed. Therefore it SHOULD be linked to an existing User. Link oauth to this user.
+                User.findOne({ id: email.userId })
+                .then( user => {
+                  user.addOauth(oauth);
+                })}
+            })
+          }
+        })
+        var userToken = {
+            "userid": user.id
+          , "role": [
+              {
+                 "name": "GENERAL"
+              }
+            ]
+        }
+        return jwt.sign( JSON.stringify(userToken), process.env.JWT_SECRET_KEY );
+      })
     },
   },
   User: {
