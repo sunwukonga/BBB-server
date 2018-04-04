@@ -43,7 +43,7 @@ const resolvers = {
         })
         .then( (oauth, oauthCreated) => {
           if (oauthCreated) {
-            const user = Email.findOrCreate({
+            return Email.findOrCreate({
                 where: { email: res.email }
               , defaults: {
                     primary: true
@@ -52,7 +52,7 @@ const resolvers = {
             .then( (email, emailCreated) => {
               if (emailCreated) {
                 // Email didn't exist, therefore no user existed. Create new.
-                User.findOrCreate({
+                return User.findOrCreate({
                   firstName: names.shift(),
                   lastName: names.join(' '),
                   profileName: res.name.replace(/\s+/g, ''),
@@ -68,23 +68,24 @@ const resolvers = {
                 })
               } else {
                 // Email existed. Therefore it SHOULD be linked to an existing User. Link oauth to this user.
-                User.findOne({ id: email.userId })
+                return User.findOne({ id: email.userId })
                 .then( user => {
                   user.addOauth(oauth);
                   return user
                 })
               }
+            }).then( user => {
+              var userToken = {
+                  "userid": user.id
+                , "role": [
+                    {
+                       "name": "GENERAL"
+                    }
+                  ]
+              }
+              return jwt.sign( JSON.stringify(userToken), process.env.JWT_SECRET_KEY );
             })
           }
-          var userToken = {
-              "userid": user.id
-            , "role": [
-                {
-                   "name": "GENERAL"
-                }
-              ]
-          }
-          return jwt.sign( JSON.stringify(userToken), process.env.JWT_SECRET_KEY );
         })
       })
     },
