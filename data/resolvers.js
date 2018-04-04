@@ -64,7 +64,7 @@ const resolvers = {
                   user.addEmail(email).then( () => {
                     user.addOauth(oauth);
                   })
-                  .then( () => return user )
+                  .then( () => { return user } )
                 })
               } else {
                 // Email existed. Therefore it SHOULD be linked to an existing User. Link oauth to this user.
@@ -76,16 +76,17 @@ const resolvers = {
               }
             })
           }
+        }).then( () => {
+          var userToken = {
+              "userid": user.id
+            , "role": [
+                {
+                   "name": "GENERAL"
+                }
+              ]
+          }
+          return jwt.sign( JSON.stringify(userToken), process.env.JWT_SECRET_KEY );
         })
-        var userToken = {
-            "userid": user.id
-          , "role": [
-              {
-                 "name": "GENERAL"
-              }
-            ]
-        }
-        return jwt.sign( JSON.stringify(userToken), process.env.JWT_SECRET_KEY );
       })
     },
   },
