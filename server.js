@@ -24,7 +24,15 @@ const jwtMiddleware = expressJWT({ secret: process.env.JWT_SECRET_KEY });
 //  req.test = jwtDecode(authHeader);
 //  next();
 //}
-const token = jwt.sign({ foo: 'bar' }, 'shhhhh');
+const token = jwt.sign({
+    "userid": ""
+  , "role": [
+      {
+         "name": "GENERAL"
+      }
+    ]
+  }, process.env.JWT_SECRET_KEY );
+
 console.log('Token: ' + token);
 console.log('Decoded: ' + jwtDecode(token));
 console.log(jwtDecode(token));
@@ -73,7 +81,7 @@ graphQLServer.use(
         , tracing: true
         , cacheControl: true
         , context: {
-              user: req.user
+              userid: req.userid
 //            , test: req.test
       }};
     }));
