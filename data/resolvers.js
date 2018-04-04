@@ -29,6 +29,7 @@ const resolvers = {
       .then( res => {
         console.log(res);
         var names = res.name.split(' ');
+        console.log(names);
         if ( (typeof res.email == "undefined") || (! /@/g.test(res.email)) ) {
           throw new Error("Oauth provider did not supply email. Login aborted.");
         }
@@ -43,6 +44,7 @@ const resolvers = {
         })
         .then( (oauth, oauthCreated) => {
           if (oauthCreated) {
+            console.log("Oauth record was created.");
             return Email.findOrCreate({
                 where: { email: res.email }
               , defaults: {
@@ -52,6 +54,7 @@ const resolvers = {
             .then( (email, emailCreated) => {
               if (emailCreated) {
                 // Email didn't exist, therefore no user existed. Create new.
+                console.log("Email didn't exist AND was created");
                 return User.findOrCreate({
                   firstName: names.shift(),
                   lastName: names.join(' '),
@@ -61,7 +64,9 @@ const resolvers = {
                   if (! userCreated) {
                     throw new Error("Email created, but user already existed! Possible duplicate facebook name. Try a different login provider.");
                   }
+                  console.log("User created");
                   user.addEmail(email).then( () => {
+                    console.log("Add Email and Oauth to user");
                     user.addOauth(oauth);
                   })
                   return user;
@@ -75,6 +80,8 @@ const resolvers = {
                 })
               }
             }).then( user => {
+              console.log("Attempting to access user to create jwt token");
+              console.log(user);
               var userToken = {
                   "userid": user.id
                 , "role": [
