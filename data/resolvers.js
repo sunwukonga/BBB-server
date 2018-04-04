@@ -36,11 +36,12 @@ const resolvers = {
   },
   Mutation: {
     loginFacebook(_, args) {
+      var names;
+	  var auth;
       return Facebook.login( args )
       .then( res => {
         console.log(res);
-        var names = res.name.split(' ');
-        console.log(names);
+        names = res.name.split(' ');
         if ( (typeof res.email == "undefined") || (! /@/g.test(res.email)) ) {
           throw new Error("Oauth provider did not supply email. Login aborted.");
         }
@@ -57,8 +58,9 @@ const resolvers = {
       .then( ([oauth, oauthCreated]) => {
         if (oauthCreated) {
           console.log("Oauth record was created.");
+		  auth = oauth;
           return Email.findOrCreate({
-              where: { email: res.email }
+              where: { email: oauth.email }
             , defaults: {
                   primary: true
               }
@@ -66,11 +68,15 @@ const resolvers = {
           .then( ([email, emailCreated]) => {
             if (emailCreated) {
               // Email didn't exist, therefore no user existed. Create new.
+			  // In future, need to check user context.userid
               console.log("Email didn't exist AND was created");
+			  var nickname = names.join('');
               return User.findOrCreate({
-                firstName: names.shift(),
-                lastName: names.join(' '),
-                profileName: res.name.replace(/\s+/g, ''),
+                  where: { firstname: names.shift() }
+                , defaults: {
+                    lastName: names.join(' ')
+				  , profileName: nickname,
+				}
               })
               .then( ([user, userCreated]) => {
                 if (! userCreated) {
@@ -79,7 +85,7 @@ const resolvers = {
                 console.log("User created");
                 user.addEmail(email).then( () => {
                   console.log("Add Email and Oauth to user");
-                  user.addOauth(oauth);
+                  user.addOauth(auth);
                 })
                 return user;
               })
@@ -87,7 +93,7 @@ const resolvers = {
               // Email existed. Therefore it SHOULD be linked to an existing User. Link oauth to this user.
               return User.findOne({ id: email.userId })
               .then( user => {
-                user.addOauth(oauth);
+                user.addOauth(auth);
                 return user
               })
             }
