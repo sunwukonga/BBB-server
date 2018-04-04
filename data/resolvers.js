@@ -1,4 +1,4 @@
-import { User, Listing, View, OnlineStatus, Country, Image, FortuneCookie, Facebook } from './connectors';
+import { User, Listing, View, OnlineStatus, Country, Image, FortuneCookie, Facebook, Oauth } from './connectors';
 import { createError, isInstance } from 'apollo-errors';
 import { Providers } from './constants/';
 import jwt from 'jsonwebtoken';
