@@ -32,7 +32,7 @@ const resolvers = {
         if ( (typeof res.email == "undefined") || (! /@/g.test(res.email)) ) {
           throw new Error("Oauth provider did not supply email. Login aborted.");
         }
-        Oauth.findOrCreate({
+        return Oauth.findOrCreate({
             where: { uid: res.id }
           , defaults: {
                 provider: Providers.Facebook
@@ -43,7 +43,7 @@ const resolvers = {
         })
         .then( (oauth, oauthCreated) => {
           if (oauthCreated) {
-            Email.findOrCreate({
+            const user = Email.findOrCreate({
                 where: { email: res.email }
               , defaults: {
                     primary: true
@@ -64,7 +64,7 @@ const resolvers = {
                   user.addEmail(email).then( () => {
                     user.addOauth(oauth);
                   })
-                  .then( () => { return user } )
+                  return user;
                 })
               } else {
                 // Email existed. Therefore it SHOULD be linked to an existing User. Link oauth to this user.
@@ -76,7 +76,6 @@ const resolvers = {
               }
             })
           }
-        }).then( () => {
           var userToken = {
               "userid": user.id
             , "role": [
