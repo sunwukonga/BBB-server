@@ -16,6 +16,7 @@ const FortuneCookie = {
 
 const Facebook = {
   login( args ) {
+	           //`https://graph.facebook.com/me?access_token=${args.token}&fields=id,name,email,picture.type(large)`
     return fetch(`https://graph.facebook.com/me?access_token=${args.token}&fields=id,name,email,picture`)
       .then(res => { return res.json() });
   },
