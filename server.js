@@ -14,6 +14,29 @@ import { formatError } from 'apollo-errors';
 //import jwt from 'jwt-express';
 //const jwt = require('jsonwebtoken');
 import jwt from 'jsonwebtoken';
+
+import AWS from 'aws-sdk';
+AWS.config.update({ accessKeyId: process.env.S3_USER_KEY_ID, secretAccessKey: process.env.S3_USER_SECRET_KEY })
+const s3 = new AWS.S3();
+
+const imageTest = s3.createPresignedPost({
+    Bucket: 'bbb-app-images'
+  , Conditions: [
+       ["content-length-range", 0, 524,288 ]
+	]
+  , Fields: { 
+	  key: 'somerandomlygeneratedalphanumeric'
+    }
+  , ContentType: 'image/jpeg'
+  }, function(err, data) { 
+  if (err) { 
+	   console.error('Presigning post data encountered an error', err); }   
+  else { 
+		console.log('The post data is', data); 
+		 } 
+});
+console.log('S3 image data: ');
+console.log(imageTest);
 const expressJWT = require('express-jwt');
 const jwtDecode = require('jwt-decode');
 //import jwt_decode from 'jwt-decode';
