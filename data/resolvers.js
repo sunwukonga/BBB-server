@@ -71,10 +71,12 @@ const resolvers = {
 			  // In future, need to check user context.userid
               console.log("Email didn't exist AND was created");
 			  var nickname = names.join('');
+			  var lastName = names.pop();
+			  var firstName = names.join(' ');
               return User.findOrCreate({
-                  where: { firstname: names.shift() }
+                  where: { firstName: firstName }
                 , defaults: {
-                    lastName: names.join(' ')
+                    lastName: lastName
 				  , profileName: nickname,
 				}
               })
