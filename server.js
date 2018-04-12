@@ -14,15 +14,26 @@ import { formatError } from 'apollo-errors';
 //import jwt from 'jwt-express';
 //const jwt = require('jsonwebtoken');
 import jwt from 'jsonwebtoken';
+import CryptoJS from 'crypto-js';
+
+function createOpaqueUniqueImageKey(imageId) {
+
+	const key = CryptoJS.enc.Hex.parse("6162636431323334");
+	const iv = CryptoJS.enc.Hex.parse("696e707574766563");
+    const encrypted = CryptoJS.DES.encrypt(imageId, key,  { iv: iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7  });
+    return encrypted.ciphertext.toString();
+}
+const imageKey = createOpaqueUniqueImageKey('1234520523');
+console.log("ImageKey ", imageKey);
 
 import AWS from 'aws-sdk';
-AWS.config.update({ accessKeyId: process.env.S3_USER_KEY_ID, secretAccessKey: process.env.S3_USER_SECRET_KEY })
+AWS.config.update({ accessKeyId: process.env.S3_USER_KEY_ID, secretAccessKey: process.env.S3_USER_SECRET_KEY, region: 'ap-southeast-1' })
 const s3 = new AWS.S3();
 
 const imageTest = s3.createPresignedPost({
     Bucket: 'bbb-app-images'
   , Conditions: [
-       ["content-length-range", 0, 524,288 ]
+       ["content-length-range", 0, 524288 ]
 	]
   , Fields: { 
 	  key: 'somerandomlygeneratedalphanumeric'
