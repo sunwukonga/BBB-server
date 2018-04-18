@@ -3,6 +3,8 @@ import casual from 'casual';
 import _ from 'lodash';
 import Mongoose from 'mongoose';
 import fetch from 'node-fetch';
+import CryptoJS from 'crypto-js';
+import AWS from 'aws-sdk';
 
 const FortuneCookie = {
   getOne() {
@@ -16,11 +18,60 @@ const FortuneCookie = {
 
 const Facebook = {
   login( args ) {
-	           //`https://graph.facebook.com/me?access_token=${args.token}&fields=id,name,email,picture.type(large)`
+             //`https://graph.facebook.com/me?access_token=${args.token}&fields=id,name,email,picture.type(large)`
     return fetch(`https://graph.facebook.com/me?access_token=${args.token}&fields=id,name,email,picture`)
       .then(res => { return res.json() });
   },
 };
+
+function createOpaqueUniqueImageKey(imageId) {
+    let imageString = imageId.toString()
+  imageString.padStart(10, '0')
+  const key = CryptoJS.enc.Hex.parse("6162636431323334");
+  const iv = CryptoJS.enc.Hex.parse("696e707574766563");
+    const encrypted = CryptoJS.DES.encrypt(imageString, key,  { iv: iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7  });
+    return encrypted.ciphertext.toString();
+}
+
+AWS.config.update({ accessKeyId: process.env.S3_USER_KEY_ID, secretAccessKey: process.env.S3_USER_SECRET_KEY, region: 'ap-southeast-1' })
+const s3 = new AWS.S3();
+
+const AWSS3 = {
+  async getSignedUrl( args ) {
+  let result
+  await ImageModel.create({})
+      .then( image => createOpaqueUniqueImageKey(image.id) )
+    .then( uniqKey => s3.createPresignedPost({
+      Bucket: 'bbb-app-images'
+      , Conditions: [
+         ["content-length-range", 0, 262144],
+         [ "eq", "$acl", "public-read" ]
+      ]
+      , Fields: { 
+        key: uniqKey
+      }
+      , ContentType: args.imageType
+      }, function(err, data) { 
+            if (err) { 
+              console.error('Presigning post data encountered an error', err); }   
+            else { 
+        console.log("data: ", data)
+          result = {
+                  id: image.id
+                , key: data.fields.key
+                , bucket: data.fields.bucket
+                , X_Amz_Algorithm: data.fields['X-Amz-Algorithm']
+                , X_Amz_Credential: data.fields['X-Amz-Credential']
+                , X_Amz_Date: data.fields['X-Amz-Date']
+                , policy: data.fields.Policy
+                , X_Amz_Signature: data.fields['X-Amz-Signature']
+              }
+            } 
+        }))
+   return result
+  },
+};
+
 
 Mongoose.Promise = global.Promise;
 
@@ -47,13 +98,22 @@ const UserModel = db.define('user', {
 const ListingModel = db.define('listing', {
   title: { type: Sequelize.STRING },
   description: { type: Sequelize.STRING },
-  saleMode: { type: Sequelize.STRING },
-  currency: { type: Sequelize.STRING },
-  currencySymbol: { type: Sequelize.STRING },
-  salePrice: { type: Sequelize.INTEGER },
 });
-// Attach barterItems
-// Attach location
+
+const SaleModeModel = db.define('salemode', {
+  mode: { type: Sequelize.STRING },
+  price: { type: Sequelize.FLOAT },
+  counterOffer: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false },
+});
+
+const TemplateModel = db.define('template', {
+  title: { type: Sequelize.STRING },
+  description: { type: Sequelize.STRING },
+});
+
+const TagModel = db.define('tag', {
+  name: { type: Sequelize.STRING },
+});
 
 const ChatModel = db.define('chat', {
   initUserAddress: { type: Sequelize.STRING },
@@ -66,10 +126,21 @@ const CountryModel = db.define('country', {
   isoCode: { type: Sequelize.STRING, primaryKey: true },
   name: { type: Sequelize.STRING },
   currency: { type: Sequelize.STRING },
+  currencySymbol: { type: Sequelize.STRING },
   tld: { type: Sequelize.STRING },
   language: { type: Sequelize.STRING },
 });
-
+// TODO: Link language and currency to CountryModel
+const LanguageModel = db.define('language', {
+  name: { type: Sequelize.STRING },
+});
+const CurrencyModel = db.define('currency', {
+  name: { type: Sequelize.STRING },
+  currencySymbol: { type: Sequelize.STRING },
+});
+const CategoryModel = db.define('category', {
+  name: { type: Sequelize.STRING },
+});
 const LocationModel = db.define('location', {
   latitude: { type: Sequelize.FLOAT },
   longitude: { type: Sequelize.FLOAT },
@@ -91,6 +162,8 @@ const OauthModel = db.define('oauth', {
   picture: { type: Sequelize.STRING },
 });
 
+const BarterOptionModel = db.define('barterOption', {
+});
 // Later associate images with templates
 const ImageModel = db.define('image', {
   imageURL: { type: Sequelize.STRING },
@@ -111,8 +184,7 @@ const ListingImagesModel = db.define('listingImages', {
 // ****************************
 
 // User Model
-ChatModel.belongsTo(UserModel);
-ListingModel.belongsTo(UserModel);
+ListingModel.belongsTo(UserModel, {as: 'user'});
 UserModel.belongsToMany(ListingModel, {as: 'Like', through: 'listingLikes'}); // UserModel.createLike, getLikes, setLikes, addLike,addLikes
 CountryModel.hasMany(UserModel, {as: 'User', foreignKey: 'country'});
 UserModel.hasMany(EmailModel);
@@ -122,6 +194,16 @@ UserModel.belongsTo(ImageModel, {as: 'profileImage'});
 // Listing Model
 UserModel.hasMany(ListingModel); //UserModel has setListingModel method; ListingModel has a userId foreign key
 ListingModel.belongsToMany(UserModel, {as: 'Like', through: 'listingLikes'});// ListingModel.createLike, getLikes, setLikes, addLike,addLikes
+CategoryModel.hasOne(CategoryModel, {as: 'parentCategory'})
+CategoryModel.hasMany(ListingModel, {as: 'listing', foreignKey: 'category'});
+ListingModel.belongsToMany(TagModel, {as: 'tag', through: 'listingTags'});
+ListingModel.belongsTo(TemplateModel, {as: 'template'});
+ListingModel.belongsTo(SaleModeModel, {as: 'saleMode'});
+
+SaleModeModel.belongsTo(CurrencyModel);
+SaleModeModel.hasMany(BarterOptionModel, {as: 'barterOption', foreignKey: 'saleMode'});
+BarterOptionModel.belongsToMany(TemplateModel, {as: 'template', through: 'barterOptionTemplates'}); 
+BarterOptionModel.belongsToMany(TagModel, {as: 'tag', through: 'barterOptionTags'});
 
 //ListingModel.belongsTo(ImageModel, {as: 'primaryImage'}); // No need. Add to through model.
 ListingModel.belongsToMany(ImageModel, {as: 'Image', through: 'listingImages'}); //listingImages model has 'primary' field
@@ -131,6 +213,7 @@ ChatModel.belongsTo(UserModel, {as: 'initUser'});
 ChatModel.belongsTo(UserModel, {as: 'recUser'});
 ChatModel.belongsTo(ListingModel);
 // SaleMode Model
+//
 
 // Mongoose
 const ViewSchema = Mongoose.Schema({
@@ -150,6 +233,7 @@ db.sync({ force: true }).then(() => {
       isoCode: 'SG'
     , name: 'Singapore'
     , currency: 'SGD'
+    , currencySymbol: '$'
     , tld: 'sg'
     , language: 'eng'
   }).then ( (country) => {
@@ -195,6 +279,7 @@ db.sync({ force: true }).then(() => {
 const User = db.models.user;
 const Listing = db.models.listing;
 const Country = db.models.country;
+const SaleMode = db.models.salemode;
 const Image = db.models.image;
 const Oauth = db.models.oauth;
 const Email = db.models.email;
@@ -207,9 +292,11 @@ export {
  , View
  , OnlineStatus
  , Country
+ , SaleMode
  , Image
  , FortuneCookie
  , Facebook
  , Oauth
  , Email
+ , AWSS3
 };

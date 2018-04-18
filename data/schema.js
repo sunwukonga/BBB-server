@@ -24,6 +24,28 @@ type Mutation {
   loginFacebook(
     token: String!
   ): String
+
+  getSignedUrl(
+    imageType: String!
+  ): SignedUrl
+
+  createListing(
+    mode: String!
+    images: [UploadedImage]
+    currency: String
+    cost: Float
+    counterOffer: Boolean
+    barterTemplates: [[TemplateQty]]
+    address: Address
+    postCurrency: String
+    postCost: Float
+    title: String
+    description: String
+    category: String
+    template: String
+    tags: [String]
+    ): Listing
+
 }
 
 type User {
@@ -50,21 +72,51 @@ type Country {
   language: String
 }
 
+input Address {
+  lineOne: String
+  lineTwo: String
+  postcode: String
+  long: Float
+  lat: Float
+  directions: String
+}
+
 type Image {
   imageURL: String
+}
+
+type Category {
+  name: String
+}
+
+type Template {
+  title: String!
+  description: String!
+  primaryImage: Image
+  secondaryImages: [Image]
+  tags: [String]
+}
+
+input UploadedImage {
+  imageId: String!
+  imageKey: String!
+  deleted: Boolean!
+}
+
+input TemplateQty {
+  templateId: String
+  quantity: Int
 }
 
 type Chat {
   initUser: User
   recUser: User
   listing: Listing
-  createdAt: Int
   initUserAddress: String
   recUserAddress: String
 }
 
 type Listing {
-  id: Int
   title: String
   description: String
   primaryImage: Image
@@ -73,12 +125,24 @@ type Listing {
   salePrice: Float
   currency: String
   currencySymbol: String
+  template: Template
   views: Int
   user: User
 }
 
 type LogStatus {
   result: String
+}
+
+type SignedUrl {
+  id: String!
+  key: String!
+  bucket: String!
+  X_Amz_Algorithm: String!
+  X_Amz_Credential: String!
+  X_Amz_Date: String!
+  policy: String!
+  X_Amz_Signature: String!
 }
 
 type SaleMode {
