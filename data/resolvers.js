@@ -142,8 +142,23 @@ const resolvers = {
       .then( mode => {
         switch( args.mode ) {
           case 'SALE':
+            // --ExchangeMode 
           case 'DONATE':
+
           case 'BARTER':
+            //  args.barterTemplates <-- array of arrays containing {templateId, quantity}
+            //  
+            //  args.barterTemplates.map( array => {
+            //    let barterOption = BarterOption.create({});
+            //    array.map( template => {
+            //      barterOption.addTemplate({ where: {id: template.templatedId}}, {through: {quantity: template.quantity}});
+            //    })
+            // })
+            // -- createBarterOption
+            // -- Template.findOne({ args.template
+            // -- addBarterOption
+            //  multiples depending on how many specified.
+            //   --createBarterOptionTemplate
           case 'SALEBARTER':
 
         }

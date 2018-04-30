@@ -125,10 +125,7 @@ const ChatModel = db.define('chat', {
 const CountryModel = db.define('country', {
   isoCode: { type: Sequelize.STRING, primaryKey: true },
   name: { type: Sequelize.STRING },
-  currency: { type: Sequelize.STRING },
-  currencySymbol: { type: Sequelize.STRING },
   tld: { type: Sequelize.STRING },
-  language: { type: Sequelize.STRING },
 });
 // TODO: Link language and currency to CountryModel
 const LanguageModel = db.define('language', {
@@ -164,6 +161,10 @@ const OauthModel = db.define('oauth', {
 
 const BarterOptionModel = db.define('barterOption', {
 });
+const ExchangeModeModel = db.define('exchangeMode', {
+  mode: { type: Sequelize.STRING },
+  price: { type: Sequelize.FLOAT },
+});
 // Later associate images with templates
 const ImageModel = db.define('image', {
   imageURL: { type: Sequelize.STRING },
@@ -176,6 +177,10 @@ const ImageModel = db.define('image', {
 // Join table for ListingModel and ImageModel
 const ListingImagesModel = db.define('listingImages', {
   primary: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false  },  // Only one TRUE ONCE for each listingId. Not constrained here.
+});
+// Join table for BarterOptionModel and Template
+const BarterOptionTemplatesModel = db.define('barterOptionTemplates', {
+  quantity: { type: Sequelize.INTEGER, allowNull: false, defaultValue: 1 },
 });
 //const BarterGroupModel = db.define('barterGroup');
 
@@ -202,8 +207,17 @@ ListingModel.belongsTo(SaleModeModel, {as: 'saleMode'});
 
 SaleModeModel.belongsTo(CurrencyModel);
 SaleModeModel.hasMany(BarterOptionModel, {as: 'barterOption', foreignKey: 'saleMode'});
+SaleModeModel.hasMany(ExchangeModeModel, {as: 'exchangeMode', foreignKey: 'saleMode'});
 BarterOptionModel.belongsToMany(TemplateModel, {as: 'template', through: 'barterOptionTemplates'}); 
 BarterOptionModel.belongsToMany(TagModel, {as: 'tag', through: 'barterOptionTags'});
+ExchangeModeModel.belongsTo(SaleModeModel);
+ExchangeModeModel.belongsTo(LocationModel);
+ExchangeModeModel.belongsTo(CurrencyModel);
+// TODO: Finish adding tags to join table
+BarterOptionTemplatesModel.belongsToMany(
+
+CountryModel.belongsToMany(CurrencyModel, {as: 'Currency', through: 'countryCurrency'});
+CountryModel.belongsToMany(LanguageModel, {as: 'Language', through: 'countryLanguage'});
 
 //ListingModel.belongsTo(ImageModel, {as: 'primaryImage'}); // No need. Add to through model.
 ListingModel.belongsToMany(ImageModel, {as: 'Image', through: 'listingImages'}); //listingImages model has 'primary' field
