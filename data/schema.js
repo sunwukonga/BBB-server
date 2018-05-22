@@ -8,6 +8,7 @@ const typeDefs = `
 type Query {
   user(id: Int, firstName: String, lastName: String): User
   allUsers: [User]
+  allImages: [Image]
   getFortuneCookie: String @cacheControl (maxAge: 10)
 }
 
@@ -32,13 +33,12 @@ type Mutation {
   createListing(
     mode: String!
     images: [UploadedImage]
-    currency: String
+    currency: String!
     cost: Float
     counterOffer: Boolean
     barterTemplates: [[TemplateQty]]
     address: Address
-    postCurrency: String
-    postCost: Float
+    post: Postage
     title: String
     description: String
     category: String
@@ -81,7 +81,22 @@ input Address {
   directions: String
 }
 
+type Location {
+  lineOne: String
+  lineTwo: String
+  postcode: String
+  long: Float
+  lat: Float
+  directions: String
+}
+
+input Postage {
+  postCurrency: String!
+  postCost: Float!
+}
+
 type Image {
+  id: String
   imageURL: String
 }
 
@@ -89,23 +104,35 @@ type Category {
   name: String
 }
 
+type Tag {
+  name: String!
+}
+
 type Template {
   title: String!
   description: String!
   primaryImage: Image
   secondaryImages: [Image]
-  tags: [String]
+  tags: [Tag]
+}
+
+type BarterOption {
+  template: Template
+  quantity: Int
+  tags: [Tag]
 }
 
 input UploadedImage {
   imageId: String!
   imageKey: String!
+  primary: Boolean!
   deleted: Boolean!
 }
 
 input TemplateQty {
-  templateId: String
-  quantity: Int
+  templateId: String!
+  quantity: Int!
+  tags: [String]
 }
 
 type Chat {
@@ -117,17 +144,37 @@ type Chat {
 }
 
 type Listing {
+  id: String
   title: String
   description: String
   primaryImage: Image
   secondaryImages: [Image]
-  saleMode: String
-  salePrice: Float
-  currency: String
-  currencySymbol: String
+  saleMode: SaleMode
   template: Template
+  tags: [Tag]
   views: Int
   user: User
+}
+
+type SaleMode {
+  mode: String!
+  price: Float
+  counterOffer: Boolean
+  currency: Currency
+  barterOptions: [[BarterOption]]
+  exchangeModes: [ExchangeMode]
+}
+
+type ExchangeMode {
+  mode: String!
+  price: Float
+  currency: Currency
+  location: Location
+}
+
+type Currency {
+  currency: String!
+  currencySymbol: String
 }
 
 type LogStatus {
@@ -145,12 +192,6 @@ type SignedUrl {
   X_Amz_Signature: String!
 }
 
-type SaleMode {
-  mode: String
-  currency: String
-  salePrice: Int
-  barterItems: [Listing]
-}
 `;
 
 const schema = makeExecutableSchema({ typeDefs, resolvers });

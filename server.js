@@ -15,11 +15,14 @@ import { formatError } from 'apollo-errors';
 //const jwt = require('jsonwebtoken');
 import jwt from 'jsonwebtoken';
 
+import fs from 'fs';
+   // const fs = require('fs');
+
 const expressJWT = require('express-jwt');
 const jwtDecode = require('jwt-decode');
 //import jwt_decode from 'jwt-decode';
 
-const jwtMiddleware = expressJWT({ secret: process.env.JWT_SECRET_KEY });
+//const jwtMiddleware = expressJWT({ secret: process.env.JWT_SECRET_KEY });
 //const getUserFromJwt = (req, res, next) => {
 //  const authHeader = req.headers.authorization;
 //  req.test = jwtDecode(authHeader);
@@ -68,21 +71,43 @@ graphQLServer.use(
   expressJWT({
       secret: process.env.JWT_SECRET_KEY
     , credentialsRequired: false
-  }).unless({
-      path: ['/graphiql']
   })
+  /*.unless({
+      path: ['/graphiql']
+  }) */
 );
 graphQLServer.use(
     '/graphql'
   , bodyParser.json()
   , graphqlExpress(req => {
+    /*
+      let cache = [];
+      fs.writeFile("./test.log"
+        , JSON.stringify(req, function(key, value) {
+          if (typeof value === 'object' && value !== null) {
+              if (cache.indexOf(value) !== -1) {
+                  return;
+              }
+              cache.push(value);
+          }
+          return value;
+        }, 4)
+        , function(err) {
+          if(err) {
+              return console.log(err);
+          }
+          console.log("The file was saved!");
+      });
+      cache = null;
+      */
+      //console.log("Request: ", req.user);
       return {
           schema: schema
         , formatError: formatError
         , tracing: true
         , cacheControl: true
         , context: {
-              userid: req.userid
+              userid: req.user.userid
 //            , test: req.test
       }};
     }));

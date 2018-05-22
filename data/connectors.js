@@ -132,7 +132,7 @@ const LanguageModel = db.define('language', {
   name: { type: Sequelize.STRING },
 });
 const CurrencyModel = db.define('currency', {
-  name: { type: Sequelize.STRING },
+  currency: { type: Sequelize.STRING },
   currencySymbol: { type: Sequelize.STRING },
 });
 const CategoryModel = db.define('category', {
@@ -141,7 +141,9 @@ const CategoryModel = db.define('category', {
 const LocationModel = db.define('location', {
   latitude: { type: Sequelize.FLOAT },
   longitude: { type: Sequelize.FLOAT },
-  address: { type: Sequelize.STRING },
+  lineOne: { type: Sequelize.STRING },
+  lineTwo: { type: Sequelize.STRING },
+  postcode: { type: Sequelize.STRING },
   description: { type: Sequelize.STRING },
 });
 
@@ -160,9 +162,17 @@ const OauthModel = db.define('oauth', {
 });
 
 const BarterOptionModel = db.define('barterOption', {
+  /*
+  key: {
+    type: Sequelize.INTEGER,
+    allowNull: false,
+    autoIncrement: true,
+    unique: true
+  }
+  */
 });
 const ExchangeModeModel = db.define('exchangeMode', {
-  mode: { type: Sequelize.STRING },
+  mode: { type: Sequelize.STRING }, //F2F or Post
   price: { type: Sequelize.FLOAT },
 });
 // Later associate images with templates
@@ -180,6 +190,11 @@ const ListingImagesModel = db.define('listingImages', {
 });
 // Join table for BarterOptionModel and Template
 const BarterOptionTemplatesModel = db.define('barterOptionTemplates', {
+  id: {
+    type: Sequelize.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
   quantity: { type: Sequelize.INTEGER, allowNull: false, defaultValue: 1 },
 });
 //const BarterGroupModel = db.define('barterGroup');
@@ -199,28 +214,31 @@ UserModel.belongsTo(ImageModel, {as: 'profileImage'});
 // Listing Model
 UserModel.hasMany(ListingModel); //UserModel has setListingModel method; ListingModel has a userId foreign key
 ListingModel.belongsToMany(UserModel, {as: 'Like', through: 'listingLikes'});// ListingModel.createLike, getLikes, setLikes, addLike,addLikes
-CategoryModel.hasOne(CategoryModel, {as: 'parentCategory'})
-CategoryModel.hasMany(ListingModel, {as: 'listing', foreignKey: 'category'});
-ListingModel.belongsToMany(TagModel, {as: 'tag', through: 'listingTags'});
-ListingModel.belongsTo(TemplateModel, {as: 'template'});
+CategoryModel.hasMany(CategoryModel, {as: 'Children'})
+CategoryModel.belongsTo(CategoryModel, {as: 'parent'})
+CategoryModel.hasMany(ListingModel, {as: 'listing'});
+ListingModel.belongsTo(CategoryModel);
 ListingModel.belongsTo(SaleModeModel, {as: 'saleMode'});
+ListingModel.belongsTo(TemplateModel, {as: 'template'});
+ListingModel.belongsToMany(TagModel, {through: 'listingTags'});
+TemplateModel.belongsToMany(TagModel, {through: 'templateTags'});
 
 SaleModeModel.belongsTo(CurrencyModel);
-SaleModeModel.hasMany(BarterOptionModel, {as: 'barterOption', foreignKey: 'saleMode'});
-SaleModeModel.hasMany(ExchangeModeModel, {as: 'exchangeMode', foreignKey: 'saleMode'});
-BarterOptionModel.belongsToMany(TemplateModel, {as: 'template', through: 'barterOptionTemplates'}); 
-BarterOptionModel.belongsToMany(TagModel, {as: 'tag', through: 'barterOptionTags'});
+SaleModeModel.hasMany(BarterOptionModel);
+SaleModeModel.hasMany(ExchangeModeModel);
+BarterOptionModel.belongsTo(SaleModeModel);
 ExchangeModeModel.belongsTo(SaleModeModel);
+BarterOptionModel.belongsToMany(TemplateModel, {through: 'barterOptionTemplates'});
+BarterOptionTemplatesModel.belongsToMany(TagModel, { through: 'barterOptionTags'});
+//ExchangeModeModel.belongsTo(SaleModeModel);
 ExchangeModeModel.belongsTo(LocationModel);
 ExchangeModeModel.belongsTo(CurrencyModel);
-// TODO: Finish adding tags to join table
-BarterOptionTemplatesModel.belongsToMany(
 
 CountryModel.belongsToMany(CurrencyModel, {as: 'Currency', through: 'countryCurrency'});
 CountryModel.belongsToMany(LanguageModel, {as: 'Language', through: 'countryLanguage'});
 
 //ListingModel.belongsTo(ImageModel, {as: 'primaryImage'}); // No need. Add to through model.
-ListingModel.belongsToMany(ImageModel, {as: 'Image', through: 'listingImages'}); //listingImages model has 'primary' field
+ListingModel.belongsToMany(ImageModel, {through: 'listingImages'}); //listingImages model has 'primary' field
 
 // Chat Model
 ChatModel.belongsTo(UserModel, {as: 'initUser'});
@@ -243,14 +261,36 @@ const OnlineSchema = Mongoose.Schema({
 // create mock data with a seed, so we always get the same
 casual.seed(123);
 db.sync({ force: true }).then(() => {
-  return CountryModel.create({
+  let tagOnePromise = TagModel.create({ name: "myTag0" });
+  let tagTwoPromise = TagModel.create({ name: "myTag1" });
+  Promise.all([tagOnePromise, tagTwoPromise])
+  .then( values => {
+    let [tag1, tag2] = values;
+    TemplateModel.create({ title: "myTemplate0", description: "My 0th template description" })
+    .then( template => template.addTag( tag1 ));
+    TemplateModel.create({ title: "myTemplate1", description: "My 1st template description" })
+    .then( template => template.addTag( tag1 ));
+  });
+  let sgdPromise = CurrencyModel.create({
+      currency: 'SGD'
+    , currencySymbol: '$'
+  });
+  let engPromise = LanguageModel.create({
+      name: 'eng'
+  });
+  let countryPromise = CountryModel.create({
       isoCode: 'SG'
     , name: 'Singapore'
-    , currency: 'SGD'
-    , currencySymbol: '$'
     , tld: 'sg'
-    , language: 'eng'
-  }).then ( (country) => {
+  });
+  let categoryPromise = CategoryModel.create({
+      name: 'main'
+  });
+  return Promise.all([sgdPromise, engPromise, countryPromise, categoryPromise])
+    .then ( values => {
+      let [sgd, eng, country, category] = values;
+      country.addLanguage(eng);
+      country.addCurrency(sgd);
     _.times(10, () => {
       return UserModel.create({
         firstName: casual.first_name,
@@ -261,30 +301,37 @@ db.sync({ force: true }).then(() => {
         sellerRatingCount: casual.integer(0, 200)
       }).then((user) => {
         user.createProfileImage({imageURL: 'Images.Trollie'});
-        return user.createListing({
+        let salePromise = SaleMode.create({
+            mode: "SALE"
+          , price: (Math.floor(casual.double(100, 1000)) / 100)
+          , counterOffer: casual.boolean
+        }).then( sale => {
+          sale.setCurrency( sgd );
+        });
+        let listingPromise = user.createListing({
           title: `A listing by ${user.firstName}`,
           description: casual.sentences(3),
-          saleMode: 'SALE',
-          currency: 'SGD',
-          currencySymbol: '$',
-          salePrice: (Math.floor(casual.double(100, 1000)) / 100),
-        }).then((listing) => {
-          listing.createImage({imageURL: 'Images.Trollie'}, { through: { primary: true }});
-          listing.createImage({imageURL: 'Images.Trollie'});
-          // create some View mocks
-          return View.update(
-            { listingId: listing.id },
-            { views: casual.integer(0, 100) },
-            { upsert: true }
-          ).then( () => {
-            country.addUser(user);
-            return OnlineStatus.update(
-              { userId: user.id },
-              { online: casual.boolean },
-              { upsert: true }
-            )
-          });
         });
+        return Promise.all([listingPromise, salePromise])
+          .then( (values) => {
+            let [listing, sale] = values;
+            listing.createImage({imageURL: 'Images.Trollie'}, { through: { primary: true }});
+            listing.createImage({imageURL: 'Images.Trollie'});
+            listing.setSaleMode( sale );
+            // create some View mocks
+            return View.update(
+              { listingId: listing.id },
+              { views: casual.integer(0, 100) },
+              { upsert: true }
+            ).then( () => {
+              country.addUser(user);
+              return OnlineStatus.update(
+                { userId: user.id },
+                { online: casual.boolean },
+                { upsert: true }
+              )
+            });
+          });
       });
     });
   });
@@ -294,6 +341,14 @@ const User = db.models.user;
 const Listing = db.models.listing;
 const Country = db.models.country;
 const SaleMode = db.models.salemode;
+const Template = db.models.template;
+const Tag = db.models.tag;
+const Category = db.models.category;
+const ExchangeMode = db.models.exchangeMode;
+const BarterOption = db.models.barterOption;
+const BarterOptionTemplates = db.models.barterOptionTemplates;
+const Currency = db.models.currency;
+const Location = db.models.location;
 const Image = db.models.image;
 const Oauth = db.models.oauth;
 const Email = db.models.email;
@@ -307,6 +362,14 @@ export {
  , OnlineStatus
  , Country
  , SaleMode
+ , Template
+ , Tag
+ , Category
+ , ExchangeMode
+ , BarterOption
+ , BarterOptionTemplates
+ , Currency
+ , Location
  , Image
  , FortuneCookie
  , Facebook
