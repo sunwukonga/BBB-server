@@ -1,12 +1,15 @@
 import { createError, isInstance } from 'apollo-errors';
 import { Providers } from './constants/';
 import jwt from 'jsonwebtoken';
+import Sequelize from 'sequelize';
 import {
     User
   , Listing
   , View
   , OnlineStatus
   , Country
+  , Chat
+  , ChatMessage
   , SaleMode
   , Template
   , Tag
@@ -23,6 +26,8 @@ import {
   , Email
   , AWSS3
 } from './connectors';
+
+const Op = Sequelize.Op;
 
 const FooError = createError('FooError', {
   message: 'A foo error has occurred'
@@ -46,6 +51,33 @@ const resolvers = {
     // TODO: This query cannot be accessible by normal users.
     allImages(_, args, context) {
       return Image.findAll();
+    },
+    allCountries(_, args, context) {
+      return Country.findAll();
+    },
+    allTemplates(_, args, context) {
+      if (args.categoryId) {
+        return Template.findAll({ where: { categoryId: args.categoryId }})
+      } else {
+        return Template.findAll();
+      }
+    },
+    allCategories(_, args, context) {
+      return Category.findOne({ where: { name: "root" }})
+      .then( root => root.getChildren());
+    },
+    getChatMessages(_, args, context) {
+      // Note: this returns chats, filtering the chat messages occurs at another step.
+      return Chat.findAll({ where: { initUserId: context.userid }})
+      .then( chats => {
+        return chats.map( chat => {
+          args.chatIndexes.map( chatIndex => {
+            if ( chat.id == chatIndex.chatId ) {
+              chat.lastMessageId = chatIndex.lastMessageId
+            }
+          })
+        })
+      })
     }
   },
   Mutation: {
@@ -255,6 +287,7 @@ const resolvers = {
         // Handle images
         let imagePromises = args.images.map( inputImage => {
           if (inputImage.deleted) {
+            // TODO: 
             // Delete reference in database
             // Delete instance on S3
             return null;
@@ -299,6 +332,109 @@ const resolvers = {
       //   createDelivery: method{ftf, post}, address, cost, currency
       //   map over images, if discarded: delete S3 record and image ref in database, 
       //                            else: update Image with URL
+    },
+    createChat(_, args, context) {
+      return Chat.find({
+        where: { initUserId: context.userid
+               , recUserId: args.recUserId
+               , listingId: args.listingId
+               }
+      })
+      .then( chat => {
+        if (!chat) {
+          return Chat.create({})
+          .then( chat => {
+            let senderPromise = User.find({
+              where: { id: context.userid }
+            })
+            let receiverPromise = User.find({
+              where: { id: args.recUserId }
+            })
+            let listingPromise = Listing.find({
+              where: { id: args.listingId }
+            })
+            return Promise.all([senderPromise, receiverPromise, listingPromise])
+            .then( values => {
+              let [sender, receiver, listing] = values;
+              if (listing.userId != receiver.id) {
+                chat.destroy({ force: true })
+                throw new Error("Receiving user does not own that listing.");
+              }
+              if (!sender) {
+                throw new Error("Sending user not found. This is probably an Authorization header problem.");
+              }
+              if (!receiver) {
+                throw new Error("Receiving user not found.");
+              }
+              if (!listing) {
+                throw new Error("Listing not found.");
+              }
+              chat.setInitUser(sender);
+              chat.setRecUser(receiver);
+              chat.setListing(listing);
+              return chat;
+            })
+          })
+        }
+      })
+    },
+    sendChatMessage(_, args, context) {
+      // create a message and add it [if image add image, if image & deleted, delete and do not add]
+      // fetch all messages after lastMessageId
+      return Chat.findOne({ where: { id: args.chatId }})
+      .then( chat => {
+        if (!chat) {
+          throw new Error("Chat does not exist.");
+        }
+        if ( chat.initUserId == context.userid || chat.recUserId == context.userid ) {
+          return ChatMessage.create({
+            // TODO: Some protection from ridiculously large messages?
+            message: args.message
+          })
+          .then( chatMessage => {
+            if (args.image) {
+              if (args.image.deleted) {
+                console.log( AWS.deleteObject( args.image.imageKey ) );
+              } else {
+                //Image.findOne({where: { id: args.image.imageId }})
+                //.then( image => chatMessage.setImage( image ))
+                chatMessage.setImage( args.image.imageId );
+              }
+            }
+            chatMessage.setAuthor( context.userid );
+            return chat.addChatmessage( chatMessage )
+            .then( () => {
+              return chat.getChatmessages( {where: { id: { [Op.gt]: args.lastMessageId }}} )
+            })
+          })
+        } else {
+          // User doesn't belong in conversation
+          throw new Error("User not a member of chat.");
+        }
+      })
+    },
+    deleteChatMessage(_, args, context) {
+      return ChatMessage.findOne({ where: { id: args.id }})
+      .then( chatmessage => {
+        return Chat.findOne({ where: { id: chatmessage.chatId }})
+        .then( chat => {
+          if (chatmessage.authorId == context.userid) {
+            //authorized to delete
+            chat.getImage()
+            .then( image => {
+              console.log( AWS.deleteObject( image.imageKey ) );
+            })
+            // TODO: Delete s3 object corresponding to Image
+            return chatmessage.destroy()
+            .then( value => {
+              console.log("Return value of destroy: ", value);
+              return chat.getChatmessages( {where: { id: { [Op.gt]: args.lastMessageId }}} )
+            })
+          } else {
+            throw new Error("User not authorized to delete this message.");
+          }
+        })
+      })
     }
   },
   User: {
@@ -361,6 +497,44 @@ const resolvers = {
           // [[ { template, quantity, tags } ]]
         });
       });
+    }
+  },
+  Country: {
+    currencies(country) {
+      return country.getCurrency();
+    },
+    languages(country) {
+      return country.getLanguage()
+      .then( languages => languages.map( lang => lang.name ));
+    },
+  },
+  Category: {
+    children(category) {
+      return category.getChildren();
+    },
+  },
+  Chat: {
+    initUser(chat) {
+      return chat.getInitUser();
+    },
+    recUser(chat) {
+      return chat.getRecUser();
+    },
+    listing(chat) {
+      return chat.getListing();
+    },
+    chatMessages(chat) {
+      // Only include message id > lastMessageId
+      if (chat.lastMessageId) {
+        return chat.getChatmessage( {where: chatId > chat.lastMessageId } );
+      } else {
+        return chat.getChatmessage();
+      }
+    }
+  },
+  ChatMessage: {
+    image(chat) {
+      return chat.getImage();
     }
   },
   BarterOption: {

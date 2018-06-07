@@ -9,7 +9,11 @@ type Query {
   user(id: Int, firstName: String, lastName: String): User
   allUsers: [User]
   allImages: [Image]
+  allCountries: [Country]
+  allCategories: [Category]
+  allTemplates(categoryId: String): [Template]
   getFortuneCookie: String @cacheControl (maxAge: 10)
+  getChatMessages(chatIndexes: [ChatIndex]): [Chat]
 }
 
 type Mutation {
@@ -46,6 +50,22 @@ type Mutation {
     tags: [String]
     ): Listing
 
+  createChat(
+    recUserId: String
+    listingId: String
+  ): Chat
+
+  sendChatMessage(
+    chatId: String
+    message: String
+    image: UploadedImage
+    lastMessageId: String
+  ): [ChatMessage]
+
+  deleteChatMessage(
+    id: String
+    lastMessageId: String
+  ): [ChatMessage]
 }
 
 type User {
@@ -67,9 +87,9 @@ type User {
 type Country {
   isoCode: String
   name: String
-  currency: String
+  currencies: [Currency]
   tld: String
-  language: String
+  languages: [String]
 }
 
 input Address {
@@ -101,7 +121,9 @@ type Image {
 }
 
 type Category {
+  id: String
   name: String
+  children: [Category]
 }
 
 type Tag {
@@ -109,6 +131,7 @@ type Tag {
 }
 
 type Template {
+  id: String
   title: String!
   description: String!
   primaryImage: Image
@@ -135,12 +158,26 @@ input TemplateQty {
   tags: [String]
 }
 
+input ChatIndex {
+  chatId: String!
+  lastMessageId: String
+}
+
 type Chat {
+  id: String
   initUser: User
   recUser: User
   listing: Listing
+  chatMessages: [ChatMessage]
   initUserAddress: String
   recUserAddress: String
+}
+
+type ChatMessage {
+  id: String
+  message: String
+  image: Image
+  authorId: String
 }
 
 type Listing {
@@ -151,6 +188,7 @@ type Listing {
   secondaryImages: [Image]
   saleMode: SaleMode
   template: Template
+  category: Category
   tags: [Tag]
   views: Int
   user: User

@@ -6,6 +6,7 @@ import fetch from 'node-fetch';
 import CryptoJS from 'crypto-js';
 import AWS from 'aws-sdk';
 
+const BBB_BUCKET = 'bbb-app-images';
 const FortuneCookie = {
   getOne() {
     return fetch('http://fortunecookieapi.herokuapp.com/v1/cookie')
@@ -42,21 +43,23 @@ const AWSS3 = {
   await ImageModel.create({})
       .then( image => createOpaqueUniqueImageKey(image.id) )
     .then( uniqKey => s3.createPresignedPost({
-      Bucket: 'bbb-app-images'
+      Bucket: BBB_BUCKET
       , Conditions: [
          ["content-length-range", 0, 262144],
          [ "eq", "$acl", "public-read" ]
       ]
-      , Fields: { 
+      , Fields: {
         key: uniqKey
       }
       , ContentType: args.imageType
-      }, function(err, data) { 
-            if (err) { 
-              console.error('Presigning post data encountered an error', err); }   
-            else { 
-        console.log("data: ", data)
-          result = {
+      }, function(err, data) {
+            if (err) {
+              console.error('Presigning post data encountered an error', err); }
+            else {
+              image.imageKey = data.fields.key;
+              image.save();
+              console.log("data: ", data)
+              result = {
                   id: image.id
                 , key: data.fields.key
                 , bucket: data.fields.bucket
@@ -66,9 +69,18 @@ const AWSS3 = {
                 , policy: data.fields.Policy
                 , X_Amz_Signature: data.fields['X-Amz-Signature']
               }
-            } 
+            }
         }))
    return result
+  },
+  async deleteObject( key ) {
+    return await s3.deleteObject({
+        Bucket: BBB_BUCKET,
+        Key: key
+      }, function(err, data) {
+        if (err) console.log(err, err.stack); // an error occurred
+        else     console.log(data);           // successful response
+      });
   },
 };
 
@@ -120,6 +132,10 @@ const ChatModel = db.define('chat', {
   recUserAddress: { type: Sequelize.STRING },
 },{
   timestamps: true
+});
+
+const ChatMessageModel = db.define('chatmessage', {
+  message: { type: Sequelize.STRING },
 });
 
 const CountryModel = db.define('country', {
@@ -178,6 +194,7 @@ const ExchangeModeModel = db.define('exchangeMode', {
 // Later associate images with templates
 const ImageModel = db.define('image', {
   imageURL: { type: Sequelize.STRING },
+  imageKey: { type: Sequelize.STRING },
   // flagging
   // ratings
   // author
@@ -222,6 +239,7 @@ ListingModel.belongsTo(SaleModeModel, {as: 'saleMode'});
 ListingModel.belongsTo(TemplateModel, {as: 'template'});
 ListingModel.belongsToMany(TagModel, {through: 'listingTags'});
 TemplateModel.belongsToMany(TagModel, {through: 'templateTags'});
+TemplateModel.belongsTo(CategoryModel);
 
 SaleModeModel.belongsTo(CurrencyModel);
 SaleModeModel.hasMany(BarterOptionModel);
@@ -244,6 +262,9 @@ ListingModel.belongsToMany(ImageModel, {through: 'listingImages'}); //listingIma
 ChatModel.belongsTo(UserModel, {as: 'initUser'});
 ChatModel.belongsTo(UserModel, {as: 'recUser'});
 ChatModel.belongsTo(ListingModel);
+ChatModel.hasMany(ChatMessageModel);
+ChatMessageModel.belongsTo(ImageModel);
+ChatMessageModel.belongsTo(UserModel, {as: 'author'});
 // SaleMode Model
 //
 
@@ -263,16 +284,35 @@ casual.seed(123);
 db.sync({ force: true }).then(() => {
   let tagOnePromise = TagModel.create({ name: "myTag0" });
   let tagTwoPromise = TagModel.create({ name: "myTag1" });
-  Promise.all([tagOnePromise, tagTwoPromise])
+  let categoryPromise = CategoryModel.create({
+      name: 'root'
+  });
+  let subcategoryPromise = CategoryModel.create({
+      name: 'sub'
+  });
+  let subsubcategoryPromise = CategoryModel.create({
+      name: 'subsub'
+  });
+  Promise.all([tagOnePromise, tagTwoPromise, subcategoryPromise, subsubcategoryPromise])
   .then( values => {
-    let [tag1, tag2] = values;
+    let [tag1, tag2, subCategory, subsubCategory] = values;
     TemplateModel.create({ title: "myTemplate0", description: "My 0th template description" })
-    .then( template => template.addTag( tag1 ));
+    .then( template => {
+      template.addTag( tag1 )
+      template.setCategory( subCategory );
+    });
     TemplateModel.create({ title: "myTemplate1", description: "My 1st template description" })
-    .then( template => template.addTag( tag1 ));
+    .then( template => {
+      template.addTag( tag2 )
+      template.setCategory( subsubCategory );
+    });
   });
   let sgdPromise = CurrencyModel.create({
       currency: 'SGD'
+    , currencySymbol: '$'
+  });
+  let audPromise = CurrencyModel.create({
+      currency: 'AUD'
     , currencySymbol: '$'
   });
   let engPromise = LanguageModel.create({
@@ -283,14 +323,15 @@ db.sync({ force: true }).then(() => {
     , name: 'Singapore'
     , tld: 'sg'
   });
-  let categoryPromise = CategoryModel.create({
-      name: 'main'
-  });
-  return Promise.all([sgdPromise, engPromise, countryPromise, categoryPromise])
+
+  return Promise.all([sgdPromise, audPromise, engPromise, countryPromise, categoryPromise, subcategoryPromise, subsubcategoryPromise])
     .then ( values => {
-      let [sgd, eng, country, category] = values;
+      let [sgd, aud, eng, country, category, subCategory, subsubCategory] = values;
       country.addLanguage(eng);
       country.addCurrency(sgd);
+      country.addCurrency(aud);
+      category.addChildren(subCategory);
+      subCategory.addChildren(subsubCategory);
     _.times(10, () => {
       return UserModel.create({
         firstName: casual.first_name,
@@ -340,6 +381,8 @@ db.sync({ force: true }).then(() => {
 const User = db.models.user;
 const Listing = db.models.listing;
 const Country = db.models.country;
+const Chat = db.models.chat;
+const ChatMessage = db.models.chatmessage;
 const SaleMode = db.models.salemode;
 const Template = db.models.template;
 const Tag = db.models.tag;
@@ -361,6 +404,8 @@ export {
  , View
  , OnlineStatus
  , Country
+ , Chat
+ , ChatMessage
  , SaleMode
  , Template
  , Tag
