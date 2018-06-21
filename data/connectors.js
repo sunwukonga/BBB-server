@@ -43,18 +43,25 @@ const AWSS3 = {
     let presignedPostPromise = imagePromise.then( image => {
       return new Promise((resolve, reject) => {
         let uniqKey = createOpaqueUniqueImageKey(image.id)
-        let presignedPost = s3.createPresignedPost({
-          Bucket: BBB_BUCKET
-          , Conditions: [
-             ["content-length-range", 0, 262144],
-             [ "eq", "$acl", "public-read" ]
-          ]
-          , Fields: {
-            key: uniqKey
+        return s3.createPresignedPost({
+            Bucket: BBB_BUCKET
+            , Conditions: [
+               ["content-length-range", 0, 262144],
+               [ "eq", "$acl", "public-read" ]
+            ]
+            , Fields: {
+              key: uniqKey
+            }
+            , ContentType: args.imageType
+          },
+          function(err, data) {
+            if (err) {
+              console.error('Presigning post data encountered an error', err);
+            } else {
+              return data
+            }
           }
-          , ContentType: args.imageType
-        })
-        resolve(presignedPost)
+        )
       })
     })
     return Promise.all([imagePromise, presignedPostPromise])
