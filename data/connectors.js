@@ -39,9 +39,8 @@ const s3 = new AWS.S3();
 
 const AWSS3 = {
   getSignedUrl( args ) {
-    let imagePromise = ImageModel.create({})
-    let presignedPostPromise = imagePromise.then( image => {
-    let result
+    return ImageModel.create({})
+    .then( image => {
       return new Promise((resolve, reject) => {
         let uniqKey = createOpaqueUniqueImageKey(image.id)
         s3.createPresignedPost({
