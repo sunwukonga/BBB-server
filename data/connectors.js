@@ -39,6 +39,7 @@ const s3 = new AWS.S3();
 
 const AWSS3 = {
   async getSignedUrl( args ) {
+    let uniqKey = createOpaqueUniqueImageKey(image.id)
     let data = await s3.createPresignedPost({
       Bucket: BBB_BUCKET
       , Conditions: [
@@ -52,7 +53,6 @@ const AWSS3 = {
       })
     return await ImageModel.create({})
     .then( image => {
-      let uniqKey = createOpaqueUniqueImageKey(image.id)
       image.imageKey = data.fields.key;
       image.save();
       console.log("data: ", data)
