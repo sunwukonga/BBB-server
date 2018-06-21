@@ -39,47 +39,39 @@ const s3 = new AWS.S3();
 
 const AWSS3 = {
   async getSignedUrl( args ) {
-  let result
-  await ImageModel.create({})
+    return await ImageModel.create({})
       .then( image => createOpaqueUniqueImageKey(image.id) )
-    .then( uniqKey => s3.createPresignedPost({
-      Bucket: BBB_BUCKET
-      , Conditions: [
-         ["content-length-range", 0, 262144],
-         [ "eq", "$acl", "public-read" ]
-      ]
-      , Fields: {
-        key: uniqKey
-      }
-      , ContentType: args.imageType
-      }, function(err, data) {
-            if (err) {
-              console.error('Presigning post data encountered an error', err); }
-            else {
-              image.imageKey = data.fields.key;
-              image.save();
-              console.log("data: ", data)
-              result = {
-                  id: image.id
-                , key: data.fields.key
-                , bucket: data.fields.bucket
-                , X_Amz_Algorithm: data.fields['X-Amz-Algorithm']
-                , X_Amz_Credential: data.fields['X-Amz-Credential']
-                , X_Amz_Date: data.fields['X-Amz-Date']
-                , policy: data.fields.Policy
-                , X_Amz_Signature: data.fields['X-Amz-Signature']
-              }
-            }
+      .then( uniqKey => s3.createPresignedPost({
+        Bucket: BBB_BUCKET
+        , Conditions: [
+           ["content-length-range", 0, 262144],
+           [ "eq", "$acl", "public-read" ]
+        ]
+        , Fields: {
+          key: uniqKey
+        }
+        , ContentType: args.imageType
         }))
-   return result
+      .then( data => {
+        image.imageKey = data.fields.key;
+        image.save();
+        console.log("data: ", data)
+        return {
+            id: image.id
+          , key: data.fields.key
+          , bucket: data.fields.bucket
+          , X_Amz_Algorithm: data.fields['X-Amz-Algorithm']
+          , X_Amz_Credential: data.fields['X-Amz-Credential']
+          , X_Amz_Date: data.fields['X-Amz-Date']
+          , policy: data.fields.Policy
+          , X_Amz_Signature: data.fields['X-Amz-Signature']
+        }
+      })
   },
   async deleteObject( key ) {
     return await s3.deleteObject({
         Bucket: BBB_BUCKET,
         Key: key
-      }, function(err, data) {
-        if (err) console.log(err, err.stack); // an error occurred
-        else     console.log(data);           // successful response
       });
   },
 };
