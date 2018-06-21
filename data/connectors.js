@@ -39,20 +39,20 @@ const s3 = new AWS.S3();
 
 const AWSS3 = {
   async getSignedUrl( args ) {
-    let uniqKey = createOpaqueUniqueImageKey(image.id)
-    let data = await s3.createPresignedPost({
-      Bucket: BBB_BUCKET
-      , Conditions: [
-         ["content-length-range", 0, 262144],
-         [ "eq", "$acl", "public-read" ]
-      ]
-      , Fields: {
-        key: uniqKey
-      }
-      , ContentType: args.imageType
-      })
     return await ImageModel.create({})
     .then( image => {
+      let uniqKey = createOpaqueUniqueImageKey(image.id)
+      let data = await s3.createPresignedPost({
+        Bucket: BBB_BUCKET
+        , Conditions: [
+           ["content-length-range", 0, 262144],
+           [ "eq", "$acl", "public-read" ]
+        ]
+        , Fields: {
+          key: uniqKey
+        }
+        , ContentType: args.imageType
+      })
       image.imageKey = data.fields.key;
       image.save();
       console.log("data: ", data)
