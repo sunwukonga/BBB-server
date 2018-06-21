@@ -43,7 +43,7 @@ const AWSS3 = {
     let presignedPostPromise = imagePromise.then( image => {
       return new Promise((resolve, reject) => {
         let uniqKey = createOpaqueUniqueImageKey(image.id)
-        return s3.createPresignedPost({
+        let presignedPost = s3.createPresignedPost({
           Bucket: BBB_BUCKET
           , Conditions: [
              ["content-length-range", 0, 262144],
@@ -54,6 +54,7 @@ const AWSS3 = {
           }
           , ContentType: args.imageType
         })
+        resolve(presignedPost)
       })
     })
     return Promise.all([imagePromise, presignedPostPromise])
