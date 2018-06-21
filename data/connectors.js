@@ -38,7 +38,7 @@ AWS.config.update({ accessKeyId: process.env.S3_USER_KEY_ID, secretAccessKey: pr
 const s3 = new AWS.S3();
 
 const AWSS3 = {
-  async getSignedUrl( args ) {
+  getSignedUrl( args ) {
     let imagePromise = ImageModel.create({})
     let presignedPostPromise = imagePromise.then( image => {
       return new Promise((resolve, reject) => {
@@ -56,7 +56,7 @@ const AWSS3 = {
         })
       })
     })
-    Promise.all([imagePromise, presignedPostPromise])
+    return Promise.all([imagePromise, presignedPostPromise])
     .then( (image, data) => {
       image.imageKey = data.fields.key;
       image.save();
