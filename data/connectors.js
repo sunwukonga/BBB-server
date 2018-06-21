@@ -41,9 +41,10 @@ const AWSS3 = {
   getSignedUrl( args ) {
     let imagePromise = ImageModel.create({})
     let presignedPostPromise = imagePromise.then( image => {
+    let result
       return new Promise((resolve, reject) => {
         let uniqKey = createOpaqueUniqueImageKey(image.id)
-        return s3.createPresignedPost({
+        s3.createPresignedPost({
             Bucket: BBB_BUCKET
             , Conditions: [
                ["content-length-range", 0, 262144],
@@ -57,28 +58,24 @@ const AWSS3 = {
           function(err, data) {
             if (err) {
               console.error('Presigning post data encountered an error', err);
+              reject(err)
             } else {
-              return data
+              image.imageKey = data.fields.key;
+              image.save();
+              console.log("data: ", data)
+              resolve({
+                  id: image.id
+                , key: data.fields.key
+                , bucket: data.fields.bucket
+                , X_Amz_Algorithm: data.fields['X-Amz-Algorithm']
+                , X_Amz_Credential: data.fields['X-Amz-Credential']
+                , X_Amz_Date: data.fields['X-Amz-Date']
+                , policy: data.fields.Policy
+                , X_Amz_Signature: data.fields['X-Amz-Signature']
+              })
             }
-          }
-        )
+        })
       })
-    })
-    return Promise.all([imagePromise, presignedPostPromise])
-    .then( (image, data) => {
-      image.imageKey = data.fields.key;
-      image.save();
-      console.log("data: ", data)
-      return {
-          id: image.id
-        , key: data.fields.key
-        , bucket: data.fields.bucket
-        , X_Amz_Algorithm: data.fields['X-Amz-Algorithm']
-        , X_Amz_Credential: data.fields['X-Amz-Credential']
-        , X_Amz_Date: data.fields['X-Amz-Date']
-        , policy: data.fields.Policy
-        , X_Amz_Signature: data.fields['X-Amz-Signature']
-      }
     })
   },
   async deleteObject( key ) {
