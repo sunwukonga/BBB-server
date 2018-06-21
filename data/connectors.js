@@ -40,8 +40,9 @@ const s3 = new AWS.S3();
 const AWSS3 = {
   async getSignedUrl( args ) {
     return await ImageModel.create({})
-      .then( image => createOpaqueUniqueImageKey(image.id) )
-      .then( uniqKey => s3.createPresignedPost({
+    .then( image => {
+      let uniqKey = createOpaqueUniqueImageKey(image.id)
+      return s3.createPresignedPost({
         Bucket: BBB_BUCKET
         , Conditions: [
            ["content-length-range", 0, 262144],
@@ -51,7 +52,7 @@ const AWSS3 = {
           key: uniqKey
         }
         , ContentType: args.imageType
-        }))
+        })
       .then( data => {
         image.imageKey = data.fields.key;
         image.save();
@@ -67,6 +68,7 @@ const AWSS3 = {
           , X_Amz_Signature: data.fields['X-Amz-Signature']
         }
       })
+    })
   },
   async deleteObject( key ) {
     return await s3.deleteObject({
