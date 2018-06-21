@@ -47,7 +47,7 @@ const AWSS3 = {
             Bucket: BBB_BUCKET
             , Conditions: [
                ["content-length-range", 0, 262144],
-               [ "eq", "$acl", "public-read" ]
+           //    [ "eq", "$acl", "public-read" ]
             ]
             , Fields: {
               key: uniqKey
