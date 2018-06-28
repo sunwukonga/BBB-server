@@ -287,10 +287,11 @@ const resolvers = {
         // Handle images
         let imagePromises = args.images.map( inputImage => {
           if (inputImage.deleted) {
-            // TODO: 
-            // Delete reference in database
-            // Delete instance on S3
-            return null;
+            if (!inputImage.exists) {
+              // only delete if the image did NOT already exist.
+              console.log( AWS.deleteObject( args.image.imageKey ) );
+            }
+            return null; //removed by the filter below.
           } else {
             return Image.findOne({where: {id: inputImage.imageId}})
             .then( image => {
@@ -394,7 +395,10 @@ const resolvers = {
           .then( chatMessage => {
             if (args.image) {
               if (args.image.deleted) {
-                console.log( AWS.deleteObject( args.image.imageKey ) );
+                if (!args.image.exists) {
+                  // Only if the image doesn't exist somewhere else, delete it.
+                  console.log( AWS.deleteObject( args.image.imageKey ) );
+                }
               } else {
                 //Image.findOne({where: { id: args.image.imageId }})
                 //.then( image => chatMessage.setImage( image ))
