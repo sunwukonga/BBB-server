@@ -151,6 +151,7 @@ const LanguageModel = db.define('language', {
 const CurrencyModel = db.define('currency', {
   currency: { type: Sequelize.STRING },
   currencySymbol: { type: Sequelize.STRING },
+  symbolPrepend: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: true },
 });
 const CategoryModel = db.define('category', {
   name: { type: Sequelize.STRING },
@@ -324,6 +325,235 @@ db.sync({ force: true }).then(() => {
     , name: 'Singapore'
     , tld: 'sg'
   });
+  let bndPromise = CurrencyModel.create({
+      currency: 'BND'
+    , currencySymbol: '$'
+  });
+  let myrPromise = CurrencyModel.create({
+      currency: 'MYR'
+    , currencySymbol: 'RM'
+  });
+  let phpPromise = CurrencyModel.create({
+      currency: 'PHP'
+    , currencySymbol: '₱'
+  });
+  let nzdPromise = CurrencyModel.create({
+      currency: 'NZD'
+    , currencySymbol: '$'
+  });
+  let usdPromise = CurrencyModel.create({
+      currency: 'USD'
+    , currencySymbol: '$'
+  });
+  let gbpPromise = CurrencyModel.create({
+      currency: 'GBP'
+    , currencySymbol: '£'
+  });
+  let idrPromise = CurrencyModel.create({
+      currency: 'IDR'
+    , currencySymbol: 'Rp'
+  });
+  let copPromise = CurrencyModel.create({
+      currency: 'COP'
+    , currencySymbol: '$'
+  });
+  let eurPromise = CurrencyModel.create({
+      currency: 'EUR'
+    , currencySymbol: '€'
+  });
+  let tzsPromise = CurrencyModel.create({
+      currency: 'TZS'
+    , currencySymbol: 'TSh'
+    // Note: It can be prepended.
+    //, symbolPrepend: false
+    // postpended, not prepended
+    // Symbol is sometimes 100/=
+  });
+  let rwfPromise = CurrencyModel.create({
+      currency: 'RWF'
+    , currencySymbol: 'FRw'
+  });
+  let kesPromise = CurrencyModel.create({
+      currency: 'KES'
+    , currencySymbol: 'KSh'
+  });
+  let cadPromise = CurrencyModel.create({
+      currency: 'CAD'
+    , currencySymbol: '$'
+  });
+  let hkdPromise = CurrencyModel.create({
+      currency: 'HKD'
+    , currencySymbol: 'HK$'
+  });
+
+  Promise.all([engPromise, sgdPromise, bndPromise, CountryModel.create({
+        isoCode: 'BN'
+      , name: 'Brunei'
+      , tld: 'bn'
+    })])
+  .then( values => {
+      let [eng, sgd, bnd, country] = values;
+      country.addLanguage(eng);
+      country.addCurrency(sgd);
+      country.addCurrency(bnd);
+  });
+  Promise.all([engPromise, myrPromise, CountryModel.create({
+        isoCode: 'MY'
+      , name: 'Malaysia'
+      , tld: 'my'
+    })
+  ])
+  .then( values => {
+      let [eng, myr, country] = values;
+      country.addLanguage(eng);
+      country.addCurrency(myr);
+  });
+  Promise.all([engPromise, phpPromise, CountryModel.create({
+        isoCode: 'PH'
+      , name: 'Philippines'
+      , tld: 'ph'
+    })
+  ])
+  .then( values => {
+      let [eng, php, country] = values;
+      country.addLanguage(eng);
+      country.addCurrency(php);
+  });
+  Promise.all([engPromise, audPromise, CountryModel.create({
+        isoCode: 'AU'
+      , name: 'Australia'
+      , tld: 'au'
+    })
+  ])
+  .then( values => {
+      let [eng, aud, country] = values;
+      country.addLanguage(eng);
+      country.addCurrency(aud);
+  });
+  Promise.all([engPromise, nzdPromise, CountryModel.create({
+        isoCode: 'NZ'
+      , name: 'New Zealand'
+      , tld: 'nz'
+    })
+  ])
+  .then( values => {
+      let [eng, nzd, country] = values;
+      country.addLanguage(eng);
+      country.addCurrency(nzd);
+  });
+  Promise.all([engPromise, usdPromise, CountryModel.create({
+        isoCode: 'US'
+      , name: 'USA'
+      , tld: 'us'
+    })
+  ])
+  .then( values => {
+      let [eng, usd, country] = values;
+      country.addLanguage(eng);
+      country.addCurrency(usd);
+  });
+  Promise.all([engPromise, gbpPromise, CountryModel.create({
+        isoCode: 'GB'
+      , name: 'United Kingdom'
+      , tld: 'uk'
+    })
+  ])
+  .then( values => {
+      let [eng, gbp, country] = values;
+      country.addLanguage(eng);
+      country.addCurrency(gbp);
+  });
+  Promise.all([engPromise, idrPromise, CountryModel.create({
+        isoCode: 'ID'
+      , name: 'Indonesia'
+      , tld: 'id'
+    })
+  ])
+  .then( values => {
+      let [eng, idr, country] = values;
+      country.addLanguage(eng);
+      country.addCurrency(idr);
+  });
+  Promise.all([engPromise, copPromise, CountryModel.create({
+        isoCode: 'CO'
+      , name: 'Colombia'
+      , tld: 'co'
+    })
+  ])
+  .then( values => {
+      let [eng, cop, country] = values;
+      country.addLanguage(eng);
+      country.addCurrency(cop);
+  });
+  Promise.all([engPromise, copPromise, CountryModel.create({
+        isoCode: 'NL'
+      , name: 'Netherlands'
+      , tld: 'nl'
+    })
+  ])
+  .then( values => {
+      let [eng, eur, country] = values;
+      country.addLanguage(eng);
+      country.addCurrency(eur);
+  });
+  Promise.all([engPromise, tzsPromise, CountryModel.create({
+        isoCode: 'TZ'
+      , name: 'Tanzania'
+      , tld: 'tz'
+    })
+  ])
+  .then( values => {
+      let [eng, tzs, country] = values;
+      country.addLanguage(eng);
+      country.addCurrency(tzs);
+  });
+  Promise.all([engPromise, rwfPromise, CountryModel.create({
+        isoCode: 'RW'
+      , name: 'Rwanda'
+      , tld: 'rw'
+    })
+  ])
+  .then( values => {
+      let [eng, rwf, country] = values;
+      country.addLanguage(eng);
+      country.addCurrency(rwf);
+  });
+  Promise.all([engPromise, kesPromise, CountryModel.create({
+        isoCode: 'KE'
+      , name: 'Kenya'
+      , tld: 'ke'
+    })
+  ])
+  .then( values => {
+      let [eng, kes, country] = values;
+      country.addLanguage(eng);
+      country.addCurrency(kes);
+  });
+  Promise.all([engPromise, cadPromise, CountryModel.create({
+        isoCode: 'CA'
+      , name: 'Canada'
+      , tld: 'ca'
+    })
+  ])
+  .then( values => {
+      let [eng, cad, country] = values;
+      country.addLanguage(eng);
+      country.addCurrency(cad);
+  });
+  Promise.all([engPromise, hkdPromise, CountryModel.create({
+        isoCode: 'HK'
+      , name: 'Hong Kong'
+      , tld: 'hk'
+    })
+  ])
+  .then( values => {
+      let [eng, hkd, country] = values;
+      country.addLanguage(eng);
+      country.addCurrency(hkd);
+  });
+
+
+
 
   return Promise.all([sgdPromise, audPromise, engPromise, countryPromise, categoryPromise, subcategoryPromise, subsubcategoryPromise])
     .then ( values => {
