@@ -14,6 +14,14 @@ type Query {
   allTemplates(categoryId: String): [Template]
   getFortuneCookie: String @cacheControl (maxAge: 10)
   getChatMessages(chatIndexes: [ChatIndex]): [Chat]
+  getListing(id: String): Listing
+  searchTemplates(term: String, categoryId: String, tagIds: [String]): [Template]
+  searchListings(term: String, filters: Filters): [Listing]
+  getProfile: User
+  getRecentListings(limit: Int = 20, page: Int = 1): [Listing]
+  getLikedListings(limit: Int = 20, page: Int = 1): [Listing]
+  getVisitedListings(limit: Int = 20, page: Int = 1): [Listing]
+
 }
 
 type Mutation {
@@ -66,6 +74,119 @@ type Mutation {
     id: String
     lastMessageId: String
   ): [ChatMessage]
+
+  addCountry(
+    isoCode: String!
+    name: String!
+    tld: String!
+    languageIds: [String]
+    currencyIds: [String]
+  ): Country
+
+  editCountry(
+    isoCode: String!
+    name: String
+    tld: String
+    addLanguageIds: [String]
+    addCurrencyIds: [String]
+    setLanguageIds: [String]
+    setCurrencyIds: [String]
+  ): Country
+
+  enableCountry(
+    isoCode: String!
+  ): Country
+
+  disableCountry(
+    isoCode: String!
+  ): Country
+
+  addLanguage(
+    iso639_2: String!
+    name: String!
+  ): Language
+
+  editLanguage(
+    iso639_2: String!
+    name: String!
+  ): Language
+
+  enableLanguage(
+    iso639_2: String!
+  ): Language
+
+  disableLanguage(
+    iso639_2: String!
+  ): Language
+
+  addCurrency(
+    iso4217: String!
+    currencyName: String!
+    currencySymbol: String!
+    symbolPrepend: String
+  ): Currency
+
+  editCurrency(
+    iso4217: String!
+    currencyName: String
+    currencySymbol: String
+    symbolPrepend: String
+  ): Currency
+
+  enableCurrency(
+    iso4217: String!
+  ): Currency
+
+  disableCurrency(
+    iso4217: String!
+  ): Currency
+
+  addCategory(
+    name: String!
+    parentId: String!
+  ): Category
+
+  editCategory(
+    id: String!
+    name: String
+    parentId: String
+  ): Category
+
+  enableCategory(
+    id: String!
+  ): Category
+
+  disableCategory(
+    id: String!
+  ): Category
+
+  addTemplate(
+    title: String!
+    description: String!
+    categoryId: String!
+    tagIds: [String]
+    images: [UploadedImage]
+  ): Template
+
+  editTemplate(
+    id: String!
+    title: String
+    description: String
+    categoryId: String
+    setTagIds: [String]
+    addTagIds: [String]
+    setImages: [UploadedImage]
+    addImages: [UploadedImage]
+  ): Template
+
+  enableTemplate(
+    id: String!
+  ): Category
+
+  disableTemplate(
+    id: String!
+  ): Category
+
 }
 
 type User {
@@ -90,6 +211,12 @@ type Country {
   currencies: [Currency]
   tld: String
   languages: [String]
+}
+
+type Language {
+  iso639_2: String
+  name: String
+  disabled: Boolean
 }
 
 input Address {
@@ -162,6 +289,18 @@ input TemplateQty {
 input ChatIndex {
   chatId: String!
   lastMessageId: String
+}
+
+input Filters {
+  mode: String
+  seconds: Int
+  ratings: Int
+  verification: Int
+  distance: Int
+  categories: [String]
+  templates: [String]
+  tags: [String]
+  counterOffer: Boolean
 }
 
 type Chat {

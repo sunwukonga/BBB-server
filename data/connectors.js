@@ -143,15 +143,20 @@ const CountryModel = db.define('country', {
   isoCode: { type: Sequelize.STRING, primaryKey: true },
   name: { type: Sequelize.STRING },
   tld: { type: Sequelize.STRING },
+  disabled: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false },
 });
 // TODO: Link language and currency to CountryModel
 const LanguageModel = db.define('language', {
+  iso639_2: { type: Sequelize.STRING },
   name: { type: Sequelize.STRING },
+  disabled: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false },
 });
 const CurrencyModel = db.define('currency', {
-  currency: { type: Sequelize.STRING },
+  iso4217: { type: Sequelize.STRING },
+  currencyName: { type: Sequelize.STRING },
   currencySymbol: { type: Sequelize.STRING },
   symbolPrepend: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: true },
+  disabled: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false },
 });
 const CategoryModel = db.define('category', {
   name: { type: Sequelize.STRING },
@@ -237,6 +242,7 @@ CategoryModel.hasMany(CategoryModel, {as: 'Children'})
 CategoryModel.belongsTo(CategoryModel, {as: 'parent'})
 CategoryModel.hasMany(ListingModel, {as: 'listing'});
 ListingModel.belongsTo(CategoryModel);
+ListingModel.belongsTo(CountryModel);
 ListingModel.belongsTo(SaleModeModel, {as: 'saleMode'});
 ListingModel.belongsTo(TemplateModel, {as: 'template'});
 ListingModel.belongsToMany(TagModel, {through: 'listingTags'});
@@ -310,15 +316,18 @@ db.sync({ force: true }).then(() => {
     });
   });
   let sgdPromise = CurrencyModel.create({
-      currency: 'SGD'
+      iso4217: 'SGD'
+    , currencyName: 'Singapore Dollar'
     , currencySymbol: '$'
   });
   let audPromise = CurrencyModel.create({
-      currency: 'AUD'
+      iso4217: 'AUD'
+    , currencyName: 'Australia Dollar'
     , currencySymbol: '$'
   });
   let engPromise = LanguageModel.create({
-      name: 'eng'
+      iso639_2: 'eng'
+    , name: 'English'
   });
   let countryPromise = CountryModel.create({
       isoCode: 'SG'
@@ -326,43 +335,53 @@ db.sync({ force: true }).then(() => {
     , tld: 'sg'
   });
   let bndPromise = CurrencyModel.create({
-      currency: 'BND'
+      iso4217: 'BND'
+    , currencyName: 'Brunei Darussalam Dollar'
     , currencySymbol: '$'
   });
   let myrPromise = CurrencyModel.create({
-      currency: 'MYR'
+      iso4217: 'MYR'
+    , currencyName: 'Malaysia Ringgit'
     , currencySymbol: 'RM'
   });
   let phpPromise = CurrencyModel.create({
-      currency: 'PHP'
+      iso4217: 'PHP'
+    , currencyName: 'Philippines Piso'
     , currencySymbol: '₱'
   });
   let nzdPromise = CurrencyModel.create({
-      currency: 'NZD'
+      iso4217: 'NZD'
+    , currencyName: 'New Zealand Dollar'
     , currencySymbol: '$'
   });
   let usdPromise = CurrencyModel.create({
-      currency: 'USD'
+      iso4217: 'USD'
+    , currencyName: 'United States Dollar'
     , currencySymbol: '$'
   });
   let gbpPromise = CurrencyModel.create({
-      currency: 'GBP'
+      iso4217: 'GBP'
+    , currencyName: 'United Kingdom Pound'
     , currencySymbol: '£'
   });
   let idrPromise = CurrencyModel.create({
-      currency: 'IDR'
+      iso4217: 'IDR'
+    , currencyName: 'Indonesia Rupiah'
     , currencySymbol: 'Rp'
   });
   let copPromise = CurrencyModel.create({
-      currency: 'COP'
+      iso4217: 'COP'
+    , currencyName: 'Colombia Peso'
     , currencySymbol: '$'
   });
   let eurPromise = CurrencyModel.create({
-      currency: 'EUR'
+      iso4217: 'EUR'
+    , currencyName: 'Euro Member Countries'
     , currencySymbol: '€'
   });
   let tzsPromise = CurrencyModel.create({
-      currency: 'TZS'
+      iso4217: 'TZS'
+    , currencyName: 'Tanzania Shilling'
     , currencySymbol: 'TSh'
     // Note: It can be prepended.
     //, symbolPrepend: false
@@ -370,19 +389,23 @@ db.sync({ force: true }).then(() => {
     // Symbol is sometimes 100/=
   });
   let rwfPromise = CurrencyModel.create({
-      currency: 'RWF'
+      iso4217: 'RWF'
+    , currencyName: 'Rwanda Franc'
     , currencySymbol: 'FRw'
   });
   let kesPromise = CurrencyModel.create({
-      currency: 'KES'
+      iso4217: 'KES'
+    , currencyName: 'Kenya Shilling'
     , currencySymbol: 'KSh'
   });
   let cadPromise = CurrencyModel.create({
-      currency: 'CAD'
+      iso4217: 'CAD'
+    , currencyName: 'Canada Dollar'
     , currencySymbol: '$'
   });
   let hkdPromise = CurrencyModel.create({
-      currency: 'HKD'
+      iso4217: 'HKD'
+    , currencyName: 'Hong Kong Dollar'
     , currencySymbol: 'HK$'
   });
 
@@ -590,6 +613,8 @@ db.sync({ force: true }).then(() => {
             listing.createImage({imageURL: 'Images.Trollie'}, { through: { primary: true }});
             listing.createImage({imageURL: 'Images.Trollie'});
             listing.setSaleMode( sale );
+            listing.setCountry(country);
+            listing.setCategory(subCategory);
             // create some View mocks
             return View.update(
               { listingId: listing.id },
