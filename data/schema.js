@@ -351,8 +351,11 @@ type ExchangeMode {
 }
 
 type Currency {
-  currency: String!
-  currencySymbol: String
+  iso4217: String!
+  currencyName: String!
+  currencySymbol: String!
+  symbolPrepend: String
+  disabled: Boolean
 }
 
 type LogStatus {
