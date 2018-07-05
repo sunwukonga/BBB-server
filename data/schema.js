@@ -210,7 +210,7 @@ type Country {
   name: String
   currencies: [Currency]
   tld: String
-  languages: [String]
+  languages: [Language]
 }
 
 type Language {
