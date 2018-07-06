@@ -36,6 +36,7 @@ type Mutation {
 
   loginFacebook(
     token: String!
+    countryId: String
   ): String
 
   getSignedUrl(

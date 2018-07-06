@@ -114,28 +114,46 @@ const resolvers = {
           .then( ([email, emailCreated]) => {
             if (emailCreated) {
               // Email didn't exist, therefore no user existed. Create new.
-        // In future, need to check user context.userid
+              // In future, need to check user context.userid
               console.log("Email didn't exist AND was created");
-        var nickname = names.join('');
-        var lastName = names.pop();
-        var firstName = names.join(' ');
+              var nickname = names.join('');
+              var lastName = names.pop();
+              var firstName = names.join(' ');
               return User.findOrCreate({
-                  where: { firstName: firstName }
+                  where: { profileName: nickname }
                 , defaults: {
                     lastName: lastName
-                  , profileName: nickname,
+                  , firstName: firstName,
                 }
               })
               .then( ([user, userCreated]) => {
                 if (! userCreated) {
-                  throw new Error("Email created, but user already existed! Possible duplicate facebook name. Try a different login provider.");
+                  return User.findOrCreate({
+                      where: { profileName: nickname + Math.floor(Math.random() * 100000) }
+                    , defaults: {
+                        lastName: lastName
+                      , firstName: firstName,
+                    }
+                  })
+                  .then( ([user, userCreated]) => {
+                    if (! userCreated) {
+                      throw new Error("Email created, but user already existed! Possible duplicate facebook name. Try a different login provider.");
+                    }
+
+                    user.addEmail(email).then( () => {
+                      console.log("Add Email and Oauth to user");
+                      user.addOauth(auth);
+                    })
+                    return user
+                  })
+                  //throw new Error("Email created, but user already existed! Possible duplicate facebook name. Try a different login provider.");
                 }
                 console.log("User created");
                 user.addEmail(email).then( () => {
                   console.log("Add Email and Oauth to user");
                   user.addOauth(auth);
                 })
-                return user;
+                return user
               })
             } else {
               // Email existed. Therefore it SHOULD be linked to an existing User. Link oauth to this user.
