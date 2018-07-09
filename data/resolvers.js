@@ -81,18 +81,21 @@ const resolvers = {
     },
     searchListings(_, args, context) {
       let likeArray = args.terms.reduce( (acc, term) => {
-        return acc.push({ [Op.like]: '%' + term.replace(/[^\W]+/) + '%' })
-      }, []);
+          acc.push({ [Op.like]: '%' + term.replace(/[\W]+/, "") + '%' })
+          return acc
+        }
+        , new Array())
+      console.log("SHOW:", likeArray);
       return Listing.findAll({
         where: {
-          [Op.or]: [{
+          [Op.or]: {
             title: {
               [Op.or]: likeArray
             },
             description: {
               [Op.or]: likeArray
             },
-          }]
+          }
         },
         order: [
           ['updatedAt', 'DESC']
