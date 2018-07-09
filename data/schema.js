@@ -15,8 +15,8 @@ type Query {
   getFortuneCookie: String @cacheControl (maxAge: 10)
   getChatMessages(chatIndexes: [ChatIndex]): [Chat]
   getListing(id: String): Listing
-  searchTemplates(term: String, categoryId: String, tagIds: [String]): [Template]
-  searchListings(term: String, filters: Filters): [Listing]
+  searchTemplates(terms: [String], limit: Int = 20, page: Int = 1, categoryId: String, tagIds: [String]): [Template]
+  searchListings(terms: [String], limit: Int = 20, page: Int = 1, filters: Filters): [Listing]
   getProfile: User
   getRecentListings(limit: Int = 20, page: Int = 1): [Listing]
   getLikedListings(limit: Int = 20, page: Int = 1): [Listing]
@@ -49,6 +49,7 @@ type Mutation {
     currency: String!
     cost: Float
     counterOffer: Boolean
+    countryCode: String
     barterTemplates: [[TemplateQty]]
     address: Address
     post: Postage
@@ -294,6 +295,7 @@ input ChatIndex {
 
 input Filters {
   mode: String
+  countryCode: String!
   seconds: Int
   ratings: Int
   verification: Int

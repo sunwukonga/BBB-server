@@ -78,7 +78,30 @@ const resolvers = {
           })
         })
       })
-    }
+    },
+    searchListings(_, args, context) {
+      let likeArray = args.terms.reduce( (acc, term) => {
+        return acc.push({ [Op.like]: '%' + term.replace(/[^\W]+/) + '%' })
+      }, []);
+      return Listing.findAll({
+        where: {
+          [Op.or]: [{
+            title: {
+              [Op.or]: likeArray
+            },
+            description: {
+              [Op.or]: likeArray
+            },
+          }]
+        },
+        order: [
+          ['updatedAt', 'DESC']
+        ],
+        offset: (args.page - 1) * args.limit,
+        limit: args.limit,
+      })
+    },
+  //terms: [String], limit: Int = 20, page: Int = 1, filters: Filters): [Listing]
   },
   Mutation: {
     loginFacebook(_, args) {
@@ -208,7 +231,7 @@ const resolvers = {
       return SaleMode.create( submittedMode )
       .then( mode => {
         console.log("## Find Currency ###");
-        Currency.findOne({ where: { currency: args.currency }})
+        let currencyPromise = Currency.findOne({ where: { iso4217: args.currency }})
         .then( currency => {
          // console.log("Listing Currency input: ", args.currency);
           //console.log("Listing Currency: ", currency);
@@ -232,6 +255,8 @@ const resolvers = {
                         Promise.all( tagPromises )
                         .then( tags => {
                           tags.map( tag => barterOptionTemplate.addTag( tag ));
+                          Promise.all( tags )
+                          .then ( () => barterOption)
                         });
                       }
                     })
@@ -253,19 +278,21 @@ const resolvers = {
         if (args.post) {
           // Postage
           let exchangeModePromise = ExchangeMode.create({ mode: "POST" })
-          let currencyPromise = Currency.findOne({ where: { currency: args.post.postCurrency }})
+          let currencyPromise = Currency.findOne({ where: { iso4217: args.post.postCurrency }})
           Promise.all([exchangeModePromise, currencyPromise])
           .then( (values) => {
             let [exchangeMode, currency] = values;
             //console.log(exchangeMode);
             //console.log("Post currency input: ", args.post.postCurrency);
             //console.log("Post currency: ", currency);
-            exchangeMode.setCurrency( currency );
-            if (args.post.price) {
-              exchangeMode.price = args.post.postCost;
-              exchangeMode.save()
-            }
-            mode.addExchangeMode( exchangeMode );
+            exchangeMode.setCurrency( currency )
+            .then( () => {
+              if (args.post.price) {
+                exchangeMode.price = args.post.postCost;
+                exchangeMode.save()
+              }
+              mode.addExchangeMode( exchangeMode );
+            })
           })
         }
 
@@ -298,10 +325,10 @@ const resolvers = {
             title: args.title
           , description: args.description
         }).catch( (e) => console.log("ERROR: ListingPromise: ", e));
-        return Promise.all([mode, listingPromise])
+        return Promise.all([mode, listingPromise, currencyPromise])
       })
       .then( values => {
-        let [mode, listing] = values;
+        let [mode, listing, currency] = values;
         // Handle images
         let imagePromises = args.images.map( inputImage => {
           if (inputImage.deleted) {
@@ -320,24 +347,33 @@ const resolvers = {
             });
           }
         }).filter( image => image );
-        Promise.all(imagePromises)
+        return Promise.all(imagePromises)
         .then( images => {
-          listing.addImages(images);
+          //let [images, country] = values;
+          let countryPromise = Country.findOne({where: {isoCode: args.countryCode}}).then( country => listing.setCountry(country));
+          let addListingsPromise = listing.addImages(images);
+          let categoryPromise = Category.findOne({ where: { id: args.category } }).then( cat => cat.addListing( listing ));
+          let userPromise = User.findOne({ where: { id: context.userid }}).then( user => user.addListing( listing ));
+          let templatePromise = listing.setTemplate( args.template ).catch( (e) => console.log("ERROR: Listing.setTemplate: ", e));
+          let salemodePromise = listing.setSaleMode( mode ).catch( (e) => console.log("ERROR: Listing.setSaleMode: ", e));
+          let tagPromises = args.tags.map( tagId => Tag.findOne({ where: {id: tagId} }));
+          //return Promise.all([tagPromises, categoryPromise, userPromise])
+          return Promise.all( tagPromises )
+          .then( tags => {
+            //let [tags, cat, user] = values;
+            //console.log("TAGS: ", tags)
+            console.log("Just before setting tags.")
+            //return listing.setTags( tags )
+            return listing.setTags( tags )
+            //.then( () => Listing.findOne({ where: { id: listing.id}}));
+          })
+          .then( () => {
+            return Promise.all( [countryPromise, categoryPromise, addListingsPromise, userPromise, templatePromise, salemodePromise] )
+            .then( () => {
+              return listing
+            })
+          })
         });
-        console.log("Before attaching category");
-        let categoryPromise = Category.findOne({ where: { id: args.category } }).then( cat => cat.addListing( listing ));
-        //console.log("User ID: ", context.userid);
-        let userPromise = User.findOne({ where: { id: context.userid }}).then( user => user.addListing( listing ));
-        listing.setTemplate( args.template ).catch( (e) => console.log("ERROR: Listing.setTemplate: ", e));
-        listing.setSaleMode( mode ).catch( (e) => console.log("ERROR: Listing.setSaleMode: ", e));
-        let tagPromises = args.tags.map( tagId => Tag.findOne({ where: {id: tagId} }));
-        return Promise.all(tagPromises, categoryPromise, userPromise)
-        .then( values => {
-          let [tags, cat, user] = values;
-          console.log("User added to Listing...");
-          return listing.setTags( tags )
-          .then( () => Listing.findOne({ where: { id: listing.id}}));
-        })
       })
       // Add images, deleting where necessary.
       //   createListing: context.userid, title, description, category
@@ -476,7 +512,8 @@ const resolvers = {
   },
   Listing: {
     user(listing) {
-      return listing.getUser();
+      console.log("HERE HERE HERE HERE HERE HERE HERE HERE HERE");
+      return User.findOne({ where: { id: listing.userId }});
     },
     saleMode(listing) {
       return listing.getSaleMode();
