@@ -1,11 +1,14 @@
 import { createError, isInstance } from 'apollo-errors';
 import { Providers } from './constants/';
+import Modes from './constants/Modes';
 import jwt from 'jsonwebtoken';
 import Sequelize from 'sequelize';
+import AWS from 'aws-sdk';
+import { BadUserInputError } from 'apollo-server-express';
 import {
     User
   , Listing
-  , View
+//  , View
   , OnlineStatus
   , Country
   , Chat
@@ -17,6 +20,7 @@ import {
   , ExchangeMode
   , BarterOption
   , BarterOptionTemplates
+  , ListingViews
   , Currency
   , Location
   , Image
@@ -36,13 +40,10 @@ const FooError = createError('FooError', {
 const resolvers = {
   Query: {
     user(_, args, context) {
-      //throw new FooError({
-     //   data: context
-      //});
       return User.find({ where: args });
     },
+    // TODO: This query cannot be accessible by normal users.
     allUsers(_, args, context) {
-      //console.log("This is a test: " + context.user);
       return User.findAll();
     },
     getFortuneCookie(_, args) {
@@ -64,30 +65,124 @@ const resolvers = {
     },
     allCategories(_, args, context) {
       return Category.findOne({ where: { name: "root" }})
-      .then( root => root.getChildren());
+        .then( root => root.getChildren());
+    },
+    getListing(_, args, context) {
+      return Listing.find({ where: { id: args.id}})
+        .catch( e => Promise.reject(new Error("Possible User Error: check id. Error: " + e.message)))
+    },
+    getRecentListings(_, args, context) {
+      return Listing.findAll({
+        where: {
+          createdAt: {
+            [Op.gt]: new Date(new Date() - 1209600000) // 1209600000 seconds = 14 days
+          }
+        },
+        include: {
+          model: Country,
+          where: { isoCode: args.countryCode }
+        },
+        order: [
+          ['updatedAt', 'DESC']
+        ],
+        offset: (args.page - 1) * args.limit,
+        limit: args.limit,
+      })
+        .catch( e => Promise.reject(new Error("Possible User Error: check countryCode. Error: " + e.message)))
+    },
+    getLikedListings(_, args, context) {
+      return Listing.findAll({
+        include: [
+          {
+            model: Country,
+            where: { isoCode: args.countryCode },
+            required: true
+          },
+          {
+            model: User,
+            as: 'Like',
+            where: {
+              id: context.userid,
+            },
+            required: true
+          },
+        ],
+        order: [
+          ['updatedAt', 'DESC']
+        ],
+        offset: (args.page - 1) * args.limit,
+        limit: args.limit,
+      })
+    },
+    getVisitedListings(_, args, context) {
+      return Listing.findAll({
+        subQuery: false,
+        include: [
+          {
+            model: Country,
+            where: { isoCode: args.countryCode },
+            required: true,
+          },
+          {
+            model: User,
+            as: 'Views',
+            attributes: [
+              [Sequelize.fn('COUNT', Sequelize.col('listing.id')), 'viewers']
+            ],
+            through: {
+              //attributes: [],
+              group: ['listingViews.listingId'],
+            },
+            required: true,
+          },
+        ],
+        group: ['listing.id'],
+        order: [
+//          [{ model: User, as: 'Views' }, 'viewers', 'DESC']
+          [Sequelize.literal('`Views.viewers`'), 'DESC']
+        ],
+        offset: (args.page - 1) * args.limit,
+        limit: args.limit,
+      })
+      .then( result => {
+        console.log("---------------------------------------------------------------")
+        console.log("REsult: " + JSON.stringify(result))
+        console.log("---------------------------------------------------------------")
+        return result
+      })
     },
     getChatMessages(_, args, context) {
       // Note: this returns chats, filtering the chat messages occurs at another step.
-      return Chat.findAll({ where: { initUserId: context.userid }})
+      return Chat.findAll({
+        where: {
+          initUserId: context.userid,
+        }
+      })
       .then( chats => {
         return chats.map( chat => {
           args.chatIndexes.map( chatIndex => {
+            console.log("chat.id: " + chat.id)
             if ( chat.id == chatIndex.chatId ) {
               chat.lastMessageId = chatIndex.lastMessageId
             }
           })
+          return chat
         })
       })
     },
     searchListings(_, args, context) {
-      let likeArray = args.terms.reduce( (acc, term) => {
-          acc.push({ [Op.like]: '%' + term.replace(/[\W]+/, "") + '%' })
-          return acc
-        }
-        , new Array())
-      console.log("SHOW:", likeArray);
-      return Listing.findAll({
-        where: {
+      let whereBlock = {
+        createdAt: {
+          [Op.gt]: new Date(new Date() - args.filters.seconds * 1000)
+        },
+      }
+      if (args.terms) {
+        let likeArray = args.terms.reduce( (acc, term) => {
+            acc.push({ [Op.like]: '%' + term.replace(/[\W]+/, "") + '%' })
+            return acc
+          }
+          , new Array())
+        whereBlock = {
           [Op.or]: {
             title: {
               [Op.or]: likeArray
@@ -95,8 +190,45 @@ const resolvers = {
             description: {
               [Op.or]: likeArray
             },
+          },
+          createdAt: {
+            [Op.gt]: new Date(new Date() - args.filters.seconds * 1000)
+          },
+        }
+      }
+
+      // TODO:
+      // args.filters.distance Long lat must be stored. Then calculate and exclude each.
+      // Categories, Templates, Tags
+      return Listing.findAll({
+        where: whereBlock,
+        include: [{
+            model: SaleMode,
+            as: 'saleMode',
+            where: {
+              counterOffer: args.filters.counterOffer ? args.filters.counterOffer : { [Op.or]: [ true, false ] },
+              mode: args.filters.mode ? args.filters.mode : { [Op.or]: [ Modes.Barter, Modes.Sale, Modes.Donate, Modes.SaleBarter ] },
+              price: {
+                [Op.or]: {
+                  [Op.lte]: args.filters.priceMax,
+                  [Op.gte]: args.filters.priceMin
+                }
+              },
+            }
+          },
+          {
+            model: Country,
+            where: { isoCode: args.filters.countryCode }
+          },
+          {
+            model: User,
+            as: 'user',
+            where: Sequelize.and(
+              Sequelize.where(Sequelize.literal('sellerRating & ' + args.filters.rating), '!=', 0),
+              Sequelize.where(Sequelize.literal('idVerification & ' + args.filters.verification), '!=', 0)
+            )
           }
-        },
+        ],
         order: [
           ['updatedAt', 'DESC']
         ],
@@ -221,85 +353,158 @@ const resolvers = {
       }
     },
     createListing(_, args, context) {
+      let promiseCollection = []
       if (context.userid == "") {
         throw new Error("Authorization header does not contain a user authorized for this mutation.");
       }
       let submittedMode = {mode: args.mode}
       if (args.cost >= 0)
         submittedMode.price = args.cost
-      else if (args.mode == "SALE")
+      else if (args.mode == Modes.Sale)
         throw new Error("SALE mode must have an associated cost, even if it's zero.");
       if (args.counterOffer)
         submittedMode.counterOffer = (args.counterOffer ? true : false)
       return SaleMode.create( submittedMode )
       .then( mode => {
-        console.log("## Find Currency ###");
+        //let currencyPromise = Currency.findOne({ where: { iso4217: args.currency }})
         let currencyPromise = Currency.findOne({ where: { iso4217: args.currency }})
         .then( currency => {
-         // console.log("Listing Currency input: ", args.currency);
-          //console.log("Listing Currency: ", currency);
-          mode.setCurrency( currency ).catch( (e) => console.log("ERROR: Mode.setCurrency: ", e));
-        });
+          return mode.setCurrency( currency ).catch( (e) => console.log("ERROR: Mode.setCurrency: ", e));
+        })
+        .catch( (e) => {
+          console.log("Error: Currency.findOne where iso4217 is args.currency");
+          throw new Error("Couldn't find the currency you were looking for.");
+        })
+        promiseCollection.push( currencyPromise )
         console.log("SaleMode created");
-        if (args.mode == "BARTER" || args.mode == "SALEBARTER") {
+        if (args.mode ==  Modes.Sale || args.mode == Modes.SaleBarter) {
           if (args.barterTemplates && args.barterTemplates.length > 0) {
             let barterPromises = args.barterTemplates.map( barterOptionsData => {
               return BarterOption.create({})
               .then( barterOption => {
-                console.log("Create barter option: ", barterOptionsData);
-                barterOptionsData.map( barterOptionData => {
-                  Template.findOne({ where: { id: barterOptionData.templateId }})
+                let barterOptionPromises = barterOptionsData.map( barterOptionData => {
+                  return Template.findOne({ where: { id: barterOptionData.templateId }})
                   .then( template => {
-                    barterOption.addTemplate(template, { through: { quantity: barterOptionData.quantity }})
+                    if (!template) {
+                      console.log("barterTemplates: invalid templateId supplied");
+                      return Promise.reject(new Error("barterTemplates: invalid templateId. ", { invalidArgs: barterOptionDate.templateId }))
+                    }
+                    return barterOption.addTemplate(template, { through: { quantity: barterOptionData.quantity }})
                     .then( values => {
                       let barterOptionTemplate = values[0][0];
                       if (barterOptionData.tags && barterOptionData.tags.length > 0) {
-                        let tagPromises = barterOptionData.tags.map( tagId => Tag.findOne({ where: { id: tagId }}))
-                        Promise.all( tagPromises )
+                        let tagPromises = barterOptionData.tags.map( tagId =>
+                          Tag.findOne({ where: { id: tagId }})
+                          .then( tag => {
+                            if (!tag) {
+                              console.log("User Error> barterTemplates: tags: invalid tagId supplied");
+                              return Promise.reject(new Error("barterTemplates: tags: invalid tagId. ", { invalidArgs: tagId }))
+                            } else {
+                              return tag
+                            }
+                          })
+                        );
+                        return Promise.all( tagPromises )
+//                        .catch( e => {
+//                          console.log("______###### setTags on barterOptionTemplate has a problem." + e);
+//                          return Promise.reject(e)
+//                        })
                         .then( tags => {
-                          tags.map( tag => barterOptionTemplate.addTag( tag ));
-                          Promise.all( tags )
-                          .then ( () => barterOption)
-                        });
+                          return barterOptionTemplate.setTags( tags )
+                          .then( () => tagPromises)
+                        })
                       }
                     })
-                  });
-                })
-                //console.log("BarterOption: ", barterOption);
-                return barterOption;
+//                    .catch( e => {
+//                      console.log("______###### Catching 2nd level out" + e);
+//                      return Promise.reject(e)
+//                    })
+                  })
+//                  .catch( e => {
+//                    console.log("______###### Catching 3rd level out" + e);
+//                    return Promise.reject(e)
+//                  })
+                }) // End map
+                return Promise.all( barterOptionPromises )
+//                .catch( e => {
+//                  console.log("_____##### Catching 4th Level out: " + e)
+//                  return Promise.reject(e)
+//                })
+                .then( () => barterOption )
+              })
+//              .catch( e => {
+//                console.log("_____##### Catching 5th Level out: " + e)
+//                return Promise.reject(e)
+//              })
+            }); // End Map
+            // Here's the problem: We're returning when we should wait.
+            let barterReturnPromise = Promise.all( barterPromises )
+//            .catch( e => {
+//              console.log("_____##### Catching 6th Level out: " + e)
+//              return Promise.reject(e)
+//            })
+            .then( barterOptions => {
+              return mode.addBarterOptions( barterOptions )
+              .catch( e => {
+                return Promise.reject(new Error("barterTemplates: problem adding barterOptions to saleMode"))
               })
             });
-            Promise.all( barterPromises )
-            .then( barterOptions => {
-              //console.log("Barter Options: ", barterOptions);
-              //barterOptions.map( barterOption => barterOption.setSaleMode( mode ));
-              mode.addBarterOptions( barterOptions );
-              //barterOptions.map( barterOption => mode.addBarterOption( barterOption ));
-            });
-          }
-        } //END Adding Barter templates and tags.
+            promiseCollection.push( barterReturnPromise )
+          } //END IF --> barterTemplates has values
+        } //END IF --> Sale mode or Sale & Barter mode
         if (args.post) {
+          console.log("___________________________________________")
+          console.log("Entering post method")
+          console.log("___________________________________________")
           // Postage
-          let exchangeModePromise = ExchangeMode.create({ mode: "POST" })
+          let exchangeModePromise = ExchangeMode.create({ mode: Modes.Post })
+            .then( exMode => {
+              if (!exMode) {
+                console.log("Internal Error> ExchangeMode: create");
+                return Promise.reject(new Error("Internal Error: ExchangeMode: create.", { invalidArgs: Modes.Post }))
+              } else {
+                return exMode
+              }
+            })
           let currencyPromise = Currency.findOne({ where: { iso4217: args.post.postCurrency }})
-          Promise.all([exchangeModePromise, currencyPromise])
-          .then( (values) => {
+            .then( postCurrency => {
+              if (!postCurrency) {
+                console.log("User Error> postCurrency");
+                return Promise.reject(new Error("User Error: postCurrency", { invalidArgs: args.post.postCurrency }))
+              } else {
+                return postCurrency
+              }
+            })
+          let postPromises = Promise.all([exchangeModePromise, currencyPromise])
+          .then( values => {
+            console.log("___________________________________________")
+            console.log("VALUES 1: " + values)
+            console.log("___________________________________________")
             let [exchangeMode, currency] = values;
-            //console.log(exchangeMode);
-            //console.log("Post currency input: ", args.post.postCurrency);
-            //console.log("Post currency: ", currency);
             exchangeMode.setCurrency( currency )
             .then( () => {
               if (args.post.price) {
                 exchangeMode.price = args.post.postCost;
                 exchangeMode.save()
               }
-              mode.addExchangeMode( exchangeMode );
+              return mode.addExchangeMode( exchangeMode )
+              .then( addExchangeMode => {
+                if (!addExchangeMode) {
+                  console.log("Internal Error> mode.addExchangeMode");
+                  return Promise.reject(new Error("Internal Error: mode.addExchangeMode"))
+                } else {
+                  return addExchangeMode
+                }
+              })
             })
           })
+          promiseCollection.push( postPromises )
         }
 
         if (args.address) {
+          console.log("___________________________________________")
+          console.log("Entering ftf method")
+          console.log("___________________________________________")
           // Face to face
           let submittedAddress = {}
           if (args.address.latitude && args.address.longitude) {
@@ -314,7 +519,7 @@ const resolvers = {
             submittedAddress.postcode = args.address.postcode
           if (args.address.description)
             submittedAddress.description = args.address.description
-          let exchangeModePromise = ExchangeMode.create({ mode: "FACE" })
+          let exchangeModePromise = ExchangeMode.create({ mode: Modes.Face })
           let locationPromise = Location.create(submittedAddress);
           Promise.all([exchangeModePromise, locationPromise])
           .then( values => {
@@ -324,15 +529,6 @@ const resolvers = {
           });
         }
 
-        let listingPromise = Listing.create({
-            title: args.title
-          , description: args.description
-        }).catch( (e) => console.log("ERROR: ListingPromise: ", e));
-        return Promise.all([mode, listingPromise, currencyPromise])
-      })
-      .then( values => {
-        let [mode, listing, currency] = values;
-        // Handle images
         let imagePromises = args.images.map( inputImage => {
           if (inputImage.deleted) {
             if (!inputImage.exists) {
@@ -350,34 +546,62 @@ const resolvers = {
             });
           }
         }).filter( image => image );
+
         return Promise.all(imagePromises)
         .then( images => {
-          //let [images, country] = values;
-          let countryPromise = Country.findOne({where: {isoCode: args.countryCode}}).then( country => listing.setCountry(country));
-          let addListingsPromise = listing.addImages(images);
-          let categoryPromise = Category.findOne({ where: { id: args.category } }).then( cat => cat.addListing( listing ));
-          let userPromise = User.findOne({ where: { id: context.userid }}).then( user => user.addListing( listing ));
-          let templatePromise = listing.setTemplate( args.template ).catch( (e) => console.log("ERROR: Listing.setTemplate: ", e));
-          let salemodePromise = listing.setSaleMode( mode ).catch( (e) => console.log("ERROR: Listing.setSaleMode: ", e));
-          let tagPromises = args.tags.map( tagId => Tag.findOne({ where: {id: tagId} }));
-          //return Promise.all([tagPromises, categoryPromise, userPromise])
-          return Promise.all( tagPromises )
-          .then( tags => {
-            //let [tags, cat, user] = values;
-            //console.log("TAGS: ", tags)
-            console.log("Just before setting tags.")
-            //return listing.setTags( tags )
-            return listing.setTags( tags )
-            //.then( () => Listing.findOne({ where: { id: listing.id}}));
-          })
-          .then( () => {
-            return Promise.all( [countryPromise, categoryPromise, addListingsPromise, userPromise, templatePromise, salemodePromise] )
-            .then( () => {
-              return listing
+          return Listing.create({
+              title: args.title
+            , description: args.description
+          }).catch( (e) => console.log("ERROR: ListingPromise: ", e))
+          .then( listing => {
+            let countryPromise = Country.findOne({where: {isoCode: args.countryCode}}).then( country => listing.setCountry(country));
+            let addListingsPromise = listing.addImages(images);
+            let categoryPromise = Category.findOne({ where: { id: args.category } }).then( cat => cat.addListing( listing ));
+            let userPromise = User.findOne({ where: { id: context.userid }}).then( user => user.addListing( listing ));
+            let templatePromise = listing.setTemplate( args.template ).catch( (e) => console.log("ERROR: Listing.setTemplate: ", e));
+            let salemodePromise = listing.setSaleMode( mode ).catch( (e) => console.log("ERROR: Listing.setSaleMode: ", e));
+            let tagPromises = args.tags.map( tagId => Tag.findOne({ where: {id: tagId} }).catch( (e) => { console.log("Error: " + e); return Promise.reject(new Error("User Error: listing: tagId")) }))
+            return Promise.all( tagPromises )
+            .then( tags => {
+              return listing.setTags( tags )
+              .catch( e => {
+                console.log("_____##### Error setting tags on listing: " + e)
+                return Promise.reject(new Error("User Error: listing: tags"))
+              })
+              .then( () => {
+                return Promise.all( [countryPromise, categoryPromise, addListingsPromise, userPromise, templatePromise, salemodePromise].concat( promiseCollection ) )
+//                .catch( e => {
+//                  console.log("_____##### Catching 7th Level out: " + e)
+//                  return Promise.reject(e)
+//                })
+                .then( () => {
+                  return listing
+                })
+              })
+//              .catch( e => {
+//                console.log("_____##### Catching 8th Level out: " + e)
+//                return Promise.reject(e)
+//              })
             })
+//            .catch( e => {
+//              console.log("_____##### Catching 9th Level out: " + e)
+//              return Promise.reject(e)
+//            })
           })
-        });
+//            .catch( e => {
+//              console.log("_____##### Catching 11th Level out: " + e)
+//              return Promise.reject(e)
+//            })
+        })
+//            .catch( e => {
+//              console.log("_____##### Catching 12th Level out: " + e)
+//              return Promise.reject(e)
+//            })
       })
+//            .catch( e => {
+//              console.log("_____##### Catching 13th Level out: " + e)
+//             return Promise.reject(e)
+//           })
       // Add images, deleting where necessary.
       //   createListing: context.userid, title, description, category
       //   addTemplate: template, tags
@@ -391,10 +615,42 @@ const resolvers = {
       //   map over images, if discarded: delete S3 record and image ref in database, 
       //                            else: update Image with URL
     },
+    incrementViews(_, args, context) {
+      return Listing.getViews({where: {listingId: context.userid }})
+      .then( listing => {
+        console.log("CHECK return of getViews: " + listing)
+        return 1
+      })
+    },
+    likeListing(_, args, context) {
+      return Listing.findOne({ where: { id: args.listingId }})
+      .then( listing => {
+        if (!listing) {
+          return Promise.reject(new Error("User Error: Invalid listingId"))
+        }
+        if (listing.userId == context.userid) {
+          return Promise.reject(new Error("User Error: You cannot like your own listing"))
+        }
+        if (args.like) {
+          return listing.addLike(context.userid)
+          .catch( e => Promise.reject(new Error("User Error: You cannot like a listing twice")))
+          .then( () => {
+            return true
+          })
+        } else {
+          return listing.removeLike(context.userid)
+          .then( () => {
+            // response always 0
+            return true
+          })
+        }
+      })
+    },
     createChat(_, args, context) {
       return Chat.find({
-        where: { initUserId: context.userid
-               , recUserId: args.recUserId
+        where: {
+                 recUserId: args.recUserId
+               , initUserId: context.userid
                , listingId: args.listingId
                }
       })
@@ -442,7 +698,7 @@ const resolvers = {
       return Chat.findOne({ where: { id: args.chatId }})
       .then( chat => {
         if (!chat) {
-          throw new Error("Chat does not exist.");
+          return Promise.reject( new Error("chatId does not exist."))
         }
         if ( chat.initUserId == context.userid || chat.recUserId == context.userid ) {
           return ChatMessage.create({
@@ -465,12 +721,18 @@ const resolvers = {
             chatMessage.setAuthor( context.userid );
             return chat.addChatmessage( chatMessage )
             .then( () => {
-              return chat.getChatmessages( {where: { id: { [Op.gt]: args.lastMessageId }}} )
+              return chat.getChatmessages({
+                where: {
+                  id: {
+                    [Op.gt]: args.lastMessageId ? args.lastMessageId : 0
+                  }
+                }
+              })
             })
           })
         } else {
           // User doesn't belong in conversation
-          throw new Error("User not a member of chat.");
+          return Promise.reject(new Error("User not a member of chat."))
         }
       })
     },
@@ -515,17 +777,37 @@ const resolvers = {
   },
   Listing: {
     user(listing) {
-      console.log("HERE HERE HERE HERE HERE HERE HERE HERE HERE");
       return User.findOne({ where: { id: listing.userId }});
     },
     saleMode(listing) {
+      console.log("------------------------------------")
+      console.log("SALEMODE " + JSON.stringify(listing))
+      console.log("------------------------------------")
       return listing.getSaleMode();
     },
     template(listing) {
       return listing.getTemplate();
     },
-    views(listing) {
-      return View.findOne({ listingId: listing.id }).then(view => (view ? view.views : null));
+    viewers(listing) {
+      if (listing.Views) {
+        return listing.Views[0].dataValues.viewers
+      }
+      return listing.countViews()
+    },
+    likes(listing) {
+      return listing.countLike()
+    },
+    liked(listing, _, context) {
+      return listing.hasLike(context.userid)
+    },
+    chatExists(listing, _, context) {
+      return Chat.find({ where: {
+          initUserId: context.userid,
+          recUserId: listing.userId,
+          listingId: listing.id
+        }
+      })
+      .then( chat => chat ? true : false )
     },
     primaryImage(listing) {
 //      listing.getImage().then(images => images.filter(image => image.listingImages.dataValues.primary == true).map(image => console.log(image.listingImages.dataValues.primary)));
@@ -588,9 +870,9 @@ const resolvers = {
     chatMessages(chat) {
       // Only include message id > lastMessageId
       if (chat.lastMessageId) {
-        return chat.getChatmessage( {where: chatId > chat.lastMessageId } );
+        return chat.getChatmessages( {where: { id: { [Op.gt]: chat.lastMessageId }}} )
       } else {
-        return chat.getChatmessage();
+        return chat.getChatmessages();
       }
     }
   },
@@ -600,10 +882,10 @@ const resolvers = {
     }
   },
   BarterOption: {
-    template(barterOptionTemplate) {
+    template(barterOptionTemplates) {
       //console.log("Barter Option: ", barterOptionTemplates);
       //barterOptionTemplates.map( barterOptionTemplate => Template.findOne( {where: { id: barterOptionTemplate.templateId }} ) );
-      return Template.findOne( {where: { id: barterOptionTemplate.templateId }} );
+      return Template.findOne( {where: { id: barterOptionTemplates.templateId }} );
     },
     tags(barterOptionTemplates) {
       return barterOptionTemplates.getTags();

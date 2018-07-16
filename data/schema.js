@@ -15,12 +15,24 @@ type Query {
   getFortuneCookie: String @cacheControl (maxAge: 10)
   getChatMessages(chatIndexes: [ChatIndex]): [Chat]
   getListing(id: String): Listing
-  searchTemplates(terms: [String], limit: Int = 20, page: Int = 1, categoryId: String, tagIds: [String]): [Template]
-  searchListings(terms: [String], limit: Int = 20, page: Int = 1, filters: Filters): [Listing]
+  searchTemplates(
+    terms: [String]
+    limit: Int = 20
+    page: Int = 1
+    categoryId: String
+    tagIds: [String]
+  ): [Template]
+  searchListings(
+    terms: [String]
+    limit: Int = 20
+    page: Int = 1
+    filters: Filters!
+  ): [Listing]
   getProfile: User
-  getRecentListings(limit: Int = 20, page: Int = 1): [Listing]
-  getLikedListings(limit: Int = 20, page: Int = 1): [Listing]
-  getVisitedListings(limit: Int = 20, page: Int = 1): [Listing]
+  getRecentListings(countryCode: String!, limit: Int = 20, page: Int = 1): [Listing]
+  getVisitedListings(countryCode: String!, limit: Int = 20, page: Int = 1): [Listing]
+  getLikedListings(countryCode: String!, limit: Int = 20, page: Int = 1): [Listing]
+  
 
 }
 
@@ -49,7 +61,7 @@ type Mutation {
     currency: String!
     cost: Float
     counterOffer: Boolean
-    countryCode: String
+    countryCode: String!
     barterTemplates: [[TemplateQty]]
     address: Address
     post: Postage
@@ -59,6 +71,28 @@ type Mutation {
     template: String
     tags: [String]
     ): Listing
+  
+  # Flag a listing for deletion
+  flagListingForDeletion(
+    # This is the id of a Listing
+    listingId: String!
+    # This is the reason for flagging the Listing, i.e. no response from seller, old, dishonest description
+    reason: String
+  ): Int
+  
+  # Cancels deletion flag and confirs a three day protection 
+  protectFromDeleteFlag(
+    listingId: String!
+  ): Boolean
+
+  likeListing(
+    listingId: String!
+    like: Boolean = true
+  ): Boolean
+  
+  incrementViews(
+    listingId: String!
+  ): Int
 
   createChat(
     recUserId: String
@@ -66,7 +100,7 @@ type Mutation {
   ): Chat
 
   sendChatMessage(
-    chatId: String
+    chatId: String!
     message: String
     image: UploadedImage
     lastMessageId: String
@@ -74,7 +108,7 @@ type Mutation {
 
   deleteChatMessage(
     id: String
-    lastMessageId: String
+    lastMessageId: String = 0
   ): [ChatMessage]
 
   addCountry(
@@ -276,7 +310,7 @@ type BarterOption {
 
 input UploadedImage {
   imageId: String!
-  imageKey: String!
+  imageKey: String
   primary: Boolean!
   deleted: Boolean!
   exists: Boolean!
@@ -290,16 +324,18 @@ input TemplateQty {
 
 input ChatIndex {
   chatId: String!
-  lastMessageId: String
+  lastMessageId: String = 0
 }
 
 input Filters {
   mode: String
   countryCode: String!
-  seconds: Int
-  ratings: Int
-  verification: Int
-  distance: Int
+  seconds: Int = 2592000
+  rating: Int = 63
+  verification: Int = 31
+  distance: Int = 20000
+  priceMax: Float = 9999999
+  priceMin: Float = 0
   categories: [String]
   templates: [String]
   tags: [String]
@@ -333,7 +369,10 @@ type Listing {
   template: Template
   category: Category
   tags: [Tag]
-  views: Int
+  viewers: Int
+  likes: Int
+  liked: Boolean
+  chatExists: Boolean
   user: User
 }
 

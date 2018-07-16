@@ -212,6 +212,10 @@ const ImageModel = db.define('image', {
 const ListingImagesModel = db.define('listingImages', {
   primary: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false  },  // Only one TRUE ONCE for each listingId. Not constrained here.
 });
+// Join table for ListingModel and User (Views)
+const ListingViewsModel = db.define('listingViews', {
+  visits: { type: Sequelize.INTEGER, allowNull: false, defaultValue: 0 },
+});
 // Join table for BarterOptionModel and Template
 const BarterOptionTemplatesModel = db.define('barterOptionTemplates', {
   id: {
@@ -238,6 +242,7 @@ UserModel.belongsTo(ImageModel, {as: 'profileImage'});
 // Listing Model
 UserModel.hasMany(ListingModel); //UserModel has setListingModel method; ListingModel has a userId foreign key
 ListingModel.belongsToMany(UserModel, {as: 'Like', through: 'listingLikes'});// ListingModel.createLike, getLikes, setLikes, addLike,addLikes
+ListingModel.belongsToMany(UserModel, {as: 'Views', through: 'listingViews'});
 CategoryModel.hasMany(CategoryModel, {as: 'Children'})
 CategoryModel.belongsTo(CategoryModel, {as: 'parent'})
 CategoryModel.hasMany(ListingModel, {as: 'listing'});
@@ -277,10 +282,13 @@ ChatMessageModel.belongsTo(UserModel, {as: 'author'});
 //
 
 // Mongoose
+/*
 const ViewSchema = Mongoose.Schema({
   listingId: Number,
-  views: Number,
+  countryCode: String,
+  viewers: [Number],
 });
+*/
 
 const OnlineSchema = Mongoose.Schema({
   userId: Number,
@@ -592,7 +600,7 @@ db.sync({ force: true }).then(() => {
         lastName: casual.last_name,
         profileName: casual.username,
         idVerification: casual.integer(1, 5),
-        sellerRating: casual.integer(0, 5),
+        sellerRating: casual.integer(1, 6),
         sellerRatingCount: casual.integer(0, 200)
       }).then((user) => {
         user.createProfileImage({imageURL: 'Images.Trollie'});
@@ -601,7 +609,7 @@ db.sync({ force: true }).then(() => {
           , price: (Math.floor(casual.double(100, 1000)) / 100)
           , counterOffer: casual.boolean
         }).then( sale => {
-          sale.setCurrency( sgd );
+          return sale.setCurrency( sgd );
         });
         let listingPromise = user.createListing({
           title: `A listing by ${user.firstName}`,
@@ -612,27 +620,49 @@ db.sync({ force: true }).then(() => {
             let [listing, sale] = values;
             listing.createImage({imageURL: 'Images.Trollie'}, { through: { primary: true }});
             listing.createImage({imageURL: 'Images.Trollie'});
-            listing.setSaleMode( sale );
+            listing.setSaleMode( sale )
+            listing.setTemplate( casual.integer(1,2) ) //relies on two templates created above.
             listing.setCountry(country);
             listing.setCategory(subCategory);
             // create some View mocks
-            return View.update(
-              { listingId: listing.id },
-              { views: casual.integer(0, 100) },
-              { upsert: true }
-            ).then( () => {
+//            return View.update(
+//              { listingId: listing.id },
+//              { views: casual.integer(0, 100) },
+//              { upsert: true }
+            let userGenerator = shuffle(Array.from({length: 10}, (v, k) => k+1), user.id)
+            let ranUsers = []
+            for ( var i=0; i < Math.floor(Math.random() * 10); i++ ) {
+              ranUsers.push(userGenerator.next().value)
+            }
+            console.log("Random User Array: " + ranUsers + " UserId: " + user.id + " countryCode: " + country.isoCode + " Listing.id: " + listing.id)
+            return listing.setViews( ranUsers, { through: { count: 1 }} )
+//            return View.update(
+//              { listingId: listing.id },
+//              { countryCode: country.isoCode },
+//              { viewers: ranUsers },
+//              { upsert: true },
+            .then( () => {
               country.addUser(user);
               return OnlineStatus.update(
                 { userId: user.id },
                 { online: casual.boolean },
                 { upsert: true }
               )
-            });
+            })
+            .catch( e => console.log("Error: " + e))
           });
       });
     });
   });
 });
+
+function* shuffle(array, excluded) {
+    var i = array.length;
+    array.splice( excluded - 1, 1)
+    while (i--) {
+        yield array.splice( Math.floor(Math.random() * i), 1)[0];
+    }
+}
 
 const User = db.models.user;
 const Listing = db.models.listing;
@@ -646,18 +676,19 @@ const Category = db.models.category;
 const ExchangeMode = db.models.exchangeMode;
 const BarterOption = db.models.barterOption;
 const BarterOptionTemplates = db.models.barterOptionTemplates;
+const ListingViews = db.models.listingViews;
 const Currency = db.models.currency;
 const Location = db.models.location;
 const Image = db.models.image;
 const Oauth = db.models.oauth;
 const Email = db.models.email;
-const View = Mongoose.model('views', ViewSchema);
+//const View = Mongoose.model('views', ViewSchema);
 const OnlineStatus = Mongoose.model('onlineStatus', OnlineSchema);
 
 export {
    User
  , Listing
- , View
+// , View // Not useful anylonger.
  , OnlineStatus
  , Country
  , Chat
@@ -669,6 +700,7 @@ export {
  , ExchangeMode
  , BarterOption
  , BarterOptionTemplates
+ , ListingViews
  , Currency
  , Location
  , Image
