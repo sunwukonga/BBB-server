@@ -214,7 +214,7 @@ const ListingImagesModel = db.define('listingImages', {
 });
 // Join table for ListingModel and User (Views)
 const ListingViewsModel = db.define('listingViews', {
-  visits: { type: Sequelize.INTEGER, allowNull: false, defaultValue: 0 },
+  visits: { type: Sequelize.INTEGER, allowNull: false, defaultValue: 1 },
 });
 // Join table for BarterOptionModel and Template
 const BarterOptionTemplatesModel = db.define('barterOptionTemplates', {

@@ -29,9 +29,14 @@ type Query {
     filters: Filters!
   ): [Listing]
   getProfile: User
-  getRecentListings(countryCode: String!, limit: Int = 20, page: Int = 1): [Listing]
-  getVisitedListings(countryCode: String!, limit: Int = 20, page: Int = 1): [Listing]
-  getLikedListings(countryCode: String!, limit: Int = 20, page: Int = 1): [Listing]
+
+  getMostRecentListings(countryCode: String!, limit: Int = 20, page: Int = 1): [Listing]
+  getMostVisitedListings(countryCode: String!, limit: Int = 20, page: Int = 1): [Listing]
+  getMostLikedListings(countryCode: String!, limit: Int = 20, page: Int = 1): [Listing]
+
+  getUserVisitedListings(countryCode: String!, limit: Int = 20, page: Int = 1): [Listing]
+  getUserLikedListings(countryCode: String!, limit: Int = 20, page: Int = 1): [Listing]
+  getUserPostedListings(countryCode: String!, limit: Int = 20, page: Int = 1): [Listing]
   
 
 }
@@ -90,7 +95,7 @@ type Mutation {
     like: Boolean = true
   ): Boolean
   
-  incrementViews(
+  incrementViewings(
     listingId: String!
   ): Int
 

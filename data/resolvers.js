@@ -71,7 +71,8 @@ const resolvers = {
       return Listing.find({ where: { id: args.id}})
         .catch( e => Promise.reject(new Error("Possible User Error: check id. Error: " + e.message)))
     },
-    getRecentListings(_, args, context) {
+
+    getMostRecentListings(_, args, context) {
       return Listing.findAll({
         where: {
           createdAt: {
@@ -90,8 +91,28 @@ const resolvers = {
       })
         .catch( e => Promise.reject(new Error("Possible User Error: check countryCode. Error: " + e.message)))
     },
-    getLikedListings(_, args, context) {
+    getUserPostedListings(_, args, context) {
       return Listing.findAll({
+    //    paranoid: false,
+        where: {
+          userId: context.userid
+        },
+        include: {
+          model: Country,
+          where: { isoCode: args.countryCode },
+          required: true,
+        },
+        order: [
+          ['updatedAt', 'DESC']
+        ],
+        offset: (args.page - 1) * args.limit,
+        limit: args.limit,
+      })
+        .catch( e => Promise.reject(new Error("Possible User Error: check countryCode. Error: " + e.message)))
+    },
+    getMostLikedListings(_, args, context) {
+      return Listing.findAll({
+        subQuery: false,
         include: [
           {
             model: Country,
@@ -101,21 +122,25 @@ const resolvers = {
           {
             model: User,
             as: 'Like',
-            where: {
-              id: context.userid,
+            attributes: [
+              [Sequelize.fn('COUNT', Sequelize.col('listing.id')), 'likes']
+            ],
+            through: {
+              group: ['listingLikes.listingId'],
             },
-            required: true
+            required: true,
           },
         ],
+        group: ['listing.id'],
         order: [
-          ['updatedAt', 'DESC']
+          [Sequelize.literal('`Like.likes`'), 'DESC']
         ],
         offset: (args.page - 1) * args.limit,
         limit: args.limit,
       })
     },
-    getVisitedListings(_, args, context) {
-      return Listing.findAll({
+    getMostVisitedListings(_, args, context) {
+     return Listing.findAll({
         subQuery: false,
         include: [
           {
@@ -144,13 +169,54 @@ const resolvers = {
         offset: (args.page - 1) * args.limit,
         limit: args.limit,
       })
-      .then( result => {
-        console.log("---------------------------------------------------------------")
-        console.log("REsult: " + JSON.stringify(result))
-        console.log("---------------------------------------------------------------")
-        return result
+    },
+    getUserVisitedListings(_, args, context) {
+      return Listing.findAll({
+        include: [
+          {
+            model: Country,
+            where: { isoCode: args.countryCode },
+            required: true,
+          },
+          {
+            model: User,
+            as: 'Views',
+            where: { id: context.userid },
+            required: true,
+          },
+        ],
+        order: [
+          ['updatedAt', 'DESC']
+        ],
+        offset: (args.page - 1) * args.limit,
+        limit: args.limit,
       })
     },
+    getUserLikedListings(_, args, context) {
+      return Listing.findAll({
+        include: [
+          {
+            model: Country,
+            where: { isoCode: args.countryCode },
+            required: true
+          },
+          {
+            model: User,
+            as: 'Like',
+            where: {
+              id: context.userid,
+            },
+            required: true
+          },
+        ],
+        order: [
+          ['updatedAt', 'DESC']
+        ],
+        offset: (args.page - 1) * args.limit,
+        limit: args.limit,
+      })
+    },
+
     getChatMessages(_, args, context) {
       // Note: this returns chats, filtering the chat messages occurs at another step.
       return Chat.findAll({
@@ -615,11 +681,28 @@ const resolvers = {
       //   map over images, if discarded: delete S3 record and image ref in database, 
       //                            else: update Image with URL
     },
-    incrementViews(_, args, context) {
-      return Listing.getViews({where: {listingId: context.userid }})
+    incrementViewings(_, args, context) {
+      return Listing.findOne({ where: { id: args.listingId }})
       .then( listing => {
-        console.log("CHECK return of getViews: " + listing)
-        return 1
+        return listing.getViews({ where: { id: context.userid }})
+        .then( view => {
+          if (view.length == 0) {
+            return listing.addViews( context.userid )
+            .then( view => {
+              console.log("Top-TEST: " + JSON.stringify( view ))
+              return 1
+            })
+          }
+          return listing.addViews( view[0], { 
+            through: {
+              skipped: true,
+              visits: view[0].listingViews.visits + 1,
+            }
+          })
+          .then( changes => {
+            return view[0].listingViews.visits + 1 
+          })
+        })
       })
     },
     likeListing(_, args, context) {
@@ -795,6 +878,9 @@ const resolvers = {
       return listing.countViews()
     },
     likes(listing) {
+      if (listing.Like) {
+        return listing.Like[0].dataValues.likes
+      }
       return listing.countLike()
     },
     liked(listing, _, context) {
