@@ -63,7 +63,10 @@ const resolvers = {
         return Template.findAll();
       }
     },
-    allCategories(_, args, context) {
+    allCategoriesFlat(_, args, context) {
+      return Category.findAll({ where: { id: { [Op.gt]: 1 }}})
+    },
+    allCategoriesNested(_, args, context) {
       return Category.findOne({ where: { name: "root" }})
         .then( root => root.getChildren());
     },

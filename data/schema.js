@@ -10,7 +10,8 @@ type Query {
   allUsers: [User]
   allImages: [Image]
   allCountries: [Country]
-  allCategories: [Category]
+  allCategoriesFlat: [Category]
+  allCategoriesNested: [Category]
   allTemplates(categoryId: String): [Template]
   getFortuneCookie: String @cacheControl (maxAge: 10)
   getChatMessages(chatIndexes: [ChatIndex]): [Chat]
