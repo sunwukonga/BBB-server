@@ -830,7 +830,7 @@ const resolvers = {
         }
         if (chatmessage.authorId == context.userid) {
           //authorized to delete
-          return Chat.findOne( chatmessage.chatId )
+          return Chat.findOne( { where: { id: chatmessage.chatId }} )
           .then( chat => {
             return chatmessage.getImage()
             .then( image => {
