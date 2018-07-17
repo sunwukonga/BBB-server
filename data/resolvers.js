@@ -826,7 +826,7 @@ const resolvers = {
       return ChatMessage.findOne({ where: { id: args.id }})
       .then( chatmessage => {
         if (!chatmessage) {
-          return Promise.reject(new Error("Chat message found! Cannot delete."))
+          return Promise.reject(new Error("Chat message not found! Cannot delete."))
         }
         if (chatmessage.authorId == context.userid) {
           //authorized to delete
@@ -834,7 +834,9 @@ const resolvers = {
           .then( chat => {
             return chatmessage.getImage()
             .then( image => {
-              console.log( AWS.deleteObject( image.imageKey ) );
+              if (image) {
+                console.log( AWS.deleteObject( image.imageKey ) );
+              }
             })
             .then( () => {
               return chatmessage.destroy() // returns Promise<undefined>
