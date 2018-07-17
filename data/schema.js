@@ -10,18 +10,19 @@ type Query {
   allUsers: [User]
   allImages: [Image]
   allCountries: [Country]
+  # Returns all categories as a flat list
   allCategoriesFlat: [Category]
+  # Returns all categories as a nested list
   allCategoriesNested: [Category]
-  allTemplates(categoryId: String): [Template]
+  allTemplates(categoryId: String!): [Template]
   getFortuneCookie: String @cacheControl (maxAge: 10)
   getChatMessages(chatIndexes: [ChatIndex]): [Chat]
   getListing(id: String): Listing
   searchTemplates(
     terms: [String]
+    categoryId: String!
     limit: Int = 20
     page: Int = 1
-    categoryId: String
-    tagIds: [String]
   ): [Template]
   searchListings(
     terms: [String]
@@ -363,6 +364,7 @@ type ChatMessage {
   message: String
   image: Image
   authorId: String
+  time: Int
 }
 
 type Listing {

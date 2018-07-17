@@ -825,24 +825,24 @@ const resolvers = {
     deleteChatMessage(_, args, context) {
       return ChatMessage.findOne({ where: { id: args.id }})
       .then( chatmessage => {
-        return Chat.findOne({ where: { id: chatmessage.chatId }})
-        .then( chat => {
-          if (chatmessage.authorId == context.userid) {
-            //authorized to delete
-            chat.getImage()
+        if (chatmessage.authorId == context.userid) {
+          //authorized to delete
+          return Chat.findOne( chatmessage.chatId )
+          .then( chat => {
+            return chatmessage.getImage()
             .then( image => {
               console.log( AWS.deleteObject( image.imageKey ) );
             })
-            // TODO: Delete s3 object corresponding to Image
-            return chatmessage.destroy()
-            .then( value => {
-              console.log("Return value of destroy: ", value);
-              return chat.getChatmessages( {where: { id: { [Op.gt]: args.lastMessageId }}} )
+            .then( () => {
+              return chatmessage.destroy() // returns Promise<undefined>
+              .then( () => {
+                return chat.getChatmessages( {where: { id: { [Op.gt]: args.lastMessageId }}} )
+              })
             })
-          } else {
-            throw new Error("User not authorized to delete this message.");
-          }
-        })
+          })
+        } else {
+          throw new Error("User not authorized to delete this message.");
+        }
       })
     }
   },
