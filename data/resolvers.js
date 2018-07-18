@@ -240,17 +240,106 @@ const resolvers = {
       })
     },
     searchListings(_, args, context) {
-      let whereBlock = {
-        createdAt: {
-          [Op.gt]: new Date(new Date() - args.filters.seconds * 1000)
-        },
+      let salemodeWhereBlock = {}
+      if (args.filters.counterOffer) {
+        salemodeWhereBlock.counterOffer = args.filters.counterOffer
       }
+      if (args.filters.mode) {
+        salemodeWhereBlock.mode = args.filters.mode
+      }
+      if (args.filters.priceMax) {
+        if (args.filters.priceMin) {
+          salemodeWhereBlock.price = {
+            [Op.or]: {
+              [Op.lte]: args.filters.priceMax,
+              [Op.gte]: args.filters.priceMin
+            }
+          }
+        } else {
+          salemodeWhereBlock.price = {
+            [Op.or]: {
+              [Op.lte]: args.filters.priceMax,
+            }
+          }
+        }
+      } else {
+        if (args.filters.priceMin) {
+          salemodeWhereBlock.price = {
+            [Op.or]: {
+              [Op.gte]: args.filters.priceMin
+            }
+          }
+        }
+        // If nothing has been set by this point, both priceMin and priceMax were unset.
+      }
+      let salemodeModelBlock = {
+        model: SaleMode,
+        as: 'saleMode',
+        required: true
+      }
+      console.log("SALEMODE-- ", Object.keys(salemodeModelBlock))
+      console.log("SALEMODE-- ", Object.values(salemodeModelBlock)[0])
+      if ( Object.keys(salemodeWhereBlock).length !== 0 ) {
+        salemodeModelBlock.where = salemodeWhereBlock
+      }
+      let userModelBlock = {
+        model: User,
+        as: 'user',
+        required: true
+      }
+      let userWhereBlock = {}
+      if (args.filters.rating != 63) {
+        if (args.filters.verification != 31) {
+          userWhereBlock = Sequelize.and(
+            Sequelize.where(Sequelize.literal('sellerRating & ' + args.filters.rating), '!=', 0),
+            Sequelize.where(Sequelize.literal('idVerification & ' + args.filters.verification), '!=', 0)
+          )
+        } else {
+          userWhereBlock = Sequelize.where(Sequelize.literal('sellerRating & ' + args.filters.rating), '!=', 0)
+        }
+      } else {
+        if (args.filters.verification != 31) {
+          userWhereBlock = Sequelize.where(Sequelize.literal('idVerification & ' + args.filters.verification), '!=', 0)
+        }
+        // Both rating and verification don't care. No need for where block.
+      }
+      if ( Object.keys(userWhereBlock).length !== 0 ) {
+        userModelBlock.where = userWhereBlock
+      }
+
+      let includeBlock = [
+        salemodeModelBlock,
+/*        {
+          model: SaleMode,
+          as: 'saleMode',
+          where: salemodeWhereBlock,
+          where: {
+            counterOffer: args.filters.counterOffer ? args.filters.counterOffer : { [Op.or]: [ true, false ] },
+            mode: args.filters.mode ? args.filters.mode : { [Op.or]: [ Modes.Barter, Modes.Sale, Modes.Donate, Modes.SaleBarter ] },
+            price: {
+              [Op.or]: {
+                [Op.lte]: args.filters.priceMax,
+                [Op.gte]: args.filters.priceMin
+              }
+            },
+          },
+          required: true
+        }, */
+        {
+          model: Country,
+          where: { isoCode: args.filters.countryCode },
+          required: true
+        },
+        userModelBlock
+      ]
+
+      //This first where clause serves no purpose but to let the [Op.or] below to work.
+      let whereBlock = {}
       if (args.terms) {
         let likeArray = args.terms.reduce( (acc, term) => {
-            acc.push({ [Op.like]: '%' + term.replace(/[\W]+/, "") + '%' })
+            acc.push({ [Op.like]: '%' + term.replace(/[\W]+/g, "") + '%' })
             return acc
-          }
-          , new Array())
+          }, [])
         whereBlock = {
           [Op.or]: {
             title: {
@@ -259,18 +348,69 @@ const resolvers = {
             description: {
               [Op.or]: likeArray
             },
-          },
-          createdAt: {
-            [Op.gt]: new Date(new Date() - args.filters.seconds * 1000)
-          },
+          }
         }
       }
+      if (args.filters.seconds) {
+        whereBlock.createdAt = { [Op.gt]: new Date(new Date() - args.filters.seconds * 1000) }
+      } else {
+        whereBlock.id = { [Op.gt]: 0 }
+      }
+
+      //if (args.categories)
+
 
       // TODO:
       // args.filters.distance Long lat must be stored. Then calculate and exclude each.
-      // Categories, Templates, Tags
-      return Listing.findAll({
+      // args.categories, args.templates, args.tags [String]
+      let optionBlock = {
+        include: includeBlock,
+/*        include: [{
+            model: SaleMode,
+            as: 'saleMode',
+            where: {
+              counterOffer: args.filters.counterOffer ? args.filters.counterOffer : { [Op.or]: [ true, false ] },
+              mode: args.filters.mode ? args.filters.mode : { [Op.or]: [ Modes.Barter, Modes.Sale, Modes.Donate, Modes.SaleBarter ] },
+              price: {
+                [Op.or]: {
+                  [Op.lte]: args.filters.priceMax,
+                  [Op.gte]: args.filters.priceMin
+                }
+              },
+            },
+            required: true
+          },
+          {
+            model: Country,
+            where: { isoCode: args.filters.countryCode },
+            required: true
+          },
+          {
+            model: User,
+            as: 'user',
+            where: Sequelize.and(
+              Sequelize.where(Sequelize.literal('sellerRating & ' + args.filters.rating), '!=', 0),
+              Sequelize.where(Sequelize.literal('idVerification & ' + args.filters.verification), '!=', 0)
+            ),
+            required: true
+          }
+        ], */
+        order: [
+          ['updatedAt', 'DESC']
+        ],
+        offset: (args.page - 1) * args.limit,
+        limit: args.limit,
+      }
+      console.log("whereBlock: " + Object.values(whereBlock))
+      if ( Object.keys(whereBlock).length !== 0 ) {
+        optionBlock.where = whereBlock
+      }
+
+      return Listing.findAll( optionBlock )
+
+/*      return Listing.findAll({
         where: whereBlock,
+        include: includeBlock,
         include: [{
             model: SaleMode,
             as: 'saleMode',
@@ -283,11 +423,13 @@ const resolvers = {
                   [Op.gte]: args.filters.priceMin
                 }
               },
-            }
+            },
+            required: true
           },
           {
             model: Country,
-            where: { isoCode: args.filters.countryCode }
+            where: { isoCode: args.filters.countryCode },
+            required: true
           },
           {
             model: User,
@@ -295,15 +437,16 @@ const resolvers = {
             where: Sequelize.and(
               Sequelize.where(Sequelize.literal('sellerRating & ' + args.filters.rating), '!=', 0),
               Sequelize.where(Sequelize.literal('idVerification & ' + args.filters.verification), '!=', 0)
-            )
+            ),
+            required: true
           }
-        ],
+        ], 
         order: [
           ['updatedAt', 'DESC']
         ],
         offset: (args.page - 1) * args.limit,
         limit: args.limit,
-      })
+      }) */
     },
   //terms: [String], limit: Int = 20, page: Int = 1, filters: Filters): [Listing]
   },
@@ -740,8 +883,8 @@ const resolvers = {
                , listingId: args.listingId
                }
       })
-      .then( chat => {
-        if (!chat) {
+      .then( oldChat => {
+        if (!oldChat) {
           return Chat.create({})
           .then( chat => {
             let senderPromise = User.find({
@@ -756,10 +899,6 @@ const resolvers = {
             return Promise.all([senderPromise, receiverPromise, listingPromise])
             .then( values => {
               let [sender, receiver, listing] = values;
-              if (listing.userId != receiver.id) {
-                chat.destroy({ force: true })
-                throw new Error("Receiving user does not own that listing.");
-              }
               if (!sender) {
                 throw new Error("Sending user not found. This is probably an Authorization header problem.");
               }
@@ -769,12 +908,20 @@ const resolvers = {
               if (!listing) {
                 throw new Error("Listing not found.");
               }
-              chat.setInitUser(sender);
-              chat.setRecUser(receiver);
-              chat.setListing(listing);
-              return chat;
+              if (listing.userId != receiver.id) {
+                chat.destroy({ force: true })
+                return Promise.reject( new Error("Receiving user does not own that listing!"))
+              }
+              if (listing.userId == sender.id) {
+                chat.destroy({ force: true })
+                return Promise.reject( new Error("You cannot initiate a chat about your own listing!"))
+              }
+              return Promise.all([chat.setInitUser(sender), chat.setRecUser(receiver), chat.setListing(listing)])
+              .then( () => chat)
             })
           })
+        } else {
+          return Promise.reject( new Error("Chat already exists!"))
         }
       })
     },
@@ -835,7 +982,8 @@ const resolvers = {
             return chatmessage.getImage()
             .then( image => {
               if (image) {
-                console.log( AWS.deleteObject( image.imageKey ) );
+                console.log( AWS.deleteObject( image.imageKey ) )
+                image.destroy()
               }
             })
             .then( () => {
@@ -871,9 +1019,6 @@ const resolvers = {
       return User.findOne({ where: { id: listing.userId }});
     },
     saleMode(listing) {
-      console.log("------------------------------------")
-      console.log("SALEMODE " + JSON.stringify(listing))
-      console.log("------------------------------------")
       return listing.getSaleMode();
     },
     template(listing) {

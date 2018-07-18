@@ -21,13 +21,18 @@ type Query {
   searchTemplates(
     terms: [String]
     categoryId: String!
+    countryCode: String!
     limit: Int = 20
     page: Int = 1
   ): [Template]
   searchListings(
+    # Each string is stripped of anything not [A-Za-z_]. Each array element is used to search both title and description. 
     terms: [String]
+    # Limits the result set.
     limit: Int = 20
+    # Selects which page of limited result sets should be returned.
     page: Int = 1
+    # Mechanism for limiting results to particular categories, templates, price ranges, etc. Country selection is mandatory and nested in here.
     filters: Filters!
   ): [Listing]
   getProfile: User
@@ -335,16 +340,29 @@ input ChatIndex {
 }
 
 input Filters {
+  # SALE, DONATE, BARTER, SALEBARTER
   mode: String
+  # Mandatory field. Selects country.
   countryCode: String!
-  seconds: Int = 2592000
+  # Number of seconds (not milliseconds) to search into the past.
+  seconds: Int
+  # Rating:  1 -> 000001 (base 2) -> [0] stars<br />
+  # Rating:  3 -> 000011 -> [0,1] stars<br />
+  # Rating:  8 -> 001000 -> [3] stars<br />
+  # Rating: 12 -> 001100 -> [3,2] stars<br />
   rating: Int = 63
+  # Minimum verification is 1. 
+  # Verification: 28 -> 11100 -> [5,4,3] stars
   verification: Int = 31
-  distance: Int = 20000
-  priceMax: Float = 9999999
-  priceMin: Float = 0
+  # Not yet implemented.
+  distance: Int
+  priceMax: Float
+  priceMin: Float
+  # List of categoryId's to include in search. If an id invalid, ignored. If all invalid, search ALL categories 
   categories: [String]
+  # List of templateId's. Same behavior as categories.
   templates: [String]
+  # List of tagId's. Same behavior as categories.
   tags: [String]
   counterOffer: Boolean
 }
