@@ -743,11 +743,18 @@ const resolvers = {
 
         let imagePromises = args.images.map( inputImage => {
           if (inputImage.deleted) {
-            if (!inputImage.exists) {
-              // only delete if the image did NOT already exist.
-              console.log( AWS.deleteObject( args.image.imageKey ) );
-            }
-            return null; //removed by the filter below.
+            return Image.findById( inputImage.imageId )
+            .then( image => {
+              return image.countChatmessage()
+              .then( noOfImages => {
+                if (noOfImages <= 1) {
+                  console.log( AWS.deleteObject( args.image.imageKey ) )
+                  return image.destroy()
+                  .then( () => null )
+                }
+                return null; //removed by the filter below.
+              })
+            })
           } else {
             return Image.findOne({where: {id: inputImage.imageId}})
             .then( image => {
@@ -939,27 +946,40 @@ const resolvers = {
             message: args.message
           })
           .then( chatMessage => {
+            let imageDeletePromise = Promise.resolve(true)
+            let setImagePromise = Promise.resolve(true)
             if (args.image) {
               if (args.image.deleted) {
-                if (!args.image.exists) {
-                  // Only if the image doesn't exist somewhere else, delete it.
-                  console.log( AWS.deleteObject( args.image.imageKey ) );
-                }
+                // Only if the image doesn't exist somewhere else, delete it.
+                // I don't use args.image.exists -> it is redundant
+                imageDeletePromise = Image.findById( args.image.imageId )
+                .then( image => {
+                  return image.countChatmessage()
+                  .then( noOfImages => {
+                    if (noOfImages <= 1) {
+                      console.log( AWS.deleteObject( args.image.imageKey ) )
+                      return image.destroy()
+                    }
+                  })
+                })
               } else {
                 //Image.findOne({where: { id: args.image.imageId }})
                 //.then( image => chatMessage.setImage( image ))
-                chatMessage.setImage( args.image.imageId );
+                setImagePromise = chatMessage.setImage( args.image.imageId )
               }
             }
-            chatMessage.setAuthor( context.userid );
-            return chat.addChatmessage( chatMessage )
+            let setAuthorPromise = chatMessage.setAuthor( context.userid );
+            return Promise.all([ imageDeletePromise, setImagePromise, setAuthorPromise])
             .then( () => {
-              return chat.getChatmessages({
-                where: {
-                  id: {
-                    [Op.gt]: args.lastMessageId ? args.lastMessageId : 0
+              return chat.addChatmessage( chatMessage )
+              .then( () => {
+                return chat.getChatmessages({
+                  where: {
+                    id: {
+                      [Op.gt]: args.lastMessageId ? args.lastMessageId : 0
+                    }
                   }
-                }
+                })
               })
             })
           })
@@ -982,8 +1002,13 @@ const resolvers = {
             return chatmessage.getImage()
             .then( image => {
               if (image) {
-                console.log( AWS.deleteObject( image.imageKey ) )
-                image.destroy()
+                return image.countChatmessage()
+                .then( noOfImages => {
+                  if ( noOfImages <= 1 ) {
+                    console.log( AWS.deleteObject( image.imageKey ) )
+                    return image.destroy()
+                  }
+                })
               }
             })
             .then( () => {
@@ -994,7 +1019,7 @@ const resolvers = {
             })
           })
         } else {
-          throw new Error("User not authorized to delete this message.");
+          return Promise.reject( new Error("User not authorized to delete this message."))
         }
       })
     }

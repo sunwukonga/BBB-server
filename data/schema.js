@@ -325,7 +325,6 @@ input UploadedImage {
   imageKey: String
   primary: Boolean!
   deleted: Boolean!
-  exists: Boolean!
 }
 
 input TemplateQty {

@@ -288,6 +288,8 @@ ChatModel.belongsTo(UserModel, {as: 'recUser'});
 ChatModel.belongsTo(ListingModel);
 ChatModel.hasMany(ChatMessageModel);
 ChatMessageModel.belongsTo(ImageModel);
+ImageModel.hasMany(ChatMessageModel);
+
 ChatMessageModel.belongsTo(UserModel, {as: 'author'});
 // SaleMode Model
 //
