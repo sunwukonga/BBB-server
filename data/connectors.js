@@ -61,6 +61,7 @@ const AWSS3 = {
               reject(err)
             } else {
               image.imageKey = data.fields.key;
+              image.imageUrl = "https://s3-ap-southeast-1.amazonaws.com/bbb-app-images/" + data.fields.key
               image.save();
               console.log("data: ", data)
               resolve({

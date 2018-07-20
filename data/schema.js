@@ -364,11 +364,11 @@ input Filters {
   priceMax: Float
   priceMin: Float
   # List of categoryId's to include in search. If an id invalid, ignored. If all invalid, search ALL categories 
-  categories: [String]
+  categories: [Int]
   # List of templateId's. Same behavior as categories.
-  templates: [String]
+  templates: [Int]
   # List of tagId's. Same behavior as categories.
-  tags: [String]
+  tags: [Int]
   counterOffer: Boolean
 }
 

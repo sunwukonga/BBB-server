@@ -278,11 +278,12 @@ const resolvers = {
         as: 'saleMode',
         required: true
       }
-      console.log("SALEMODE-- ", Object.keys(salemodeModelBlock))
-      console.log("SALEMODE-- ", Object.values(salemodeModelBlock)[0])
       if ( Object.keys(salemodeWhereBlock).length !== 0 ) {
         salemodeModelBlock.where = salemodeWhereBlock
+      } else {
+        salemodeModelBlock = {}
       }
+
       let userModelBlock = {
         model: User,
         as: 'user',
@@ -306,10 +307,49 @@ const resolvers = {
       }
       if ( Object.keys(userWhereBlock).length !== 0 ) {
         userModelBlock.where = userWhereBlock
+      } else {
+        userModelBlock = {}
       }
 
+      let categoryBlock = {
+        model: Category,
+        required: true
+      }
+      if (args.filters.categories && args.filters.categories.length > 0) {
+        // TODO: If a category has children. Search over all children as well.
+        const getAllChildren = ( cats ) => {
+          if (cats && cats.length > 0) {
+            return cats.reduce( (acc, cat) => {
+              if (cat.hasChildren) {
+                return acc.concat(cat.id, getAllChildren(cat.getChildren()) )
+              } else return acc.push(cat.id)
+            }, [])
+          } else {
+            return []
+          }
+        }
+        /*
+        expandedCategories = args.filters.categories.reduce( (acc, categoryId) => {
+          Category.findById( categoryId ) 
+          .then( cat => {
+            if (cat) {
+              acc.push(categoryId)
+              cat.getChildren()
+              .then(
+            } else {
+            }
+          })
+        }, []) */
+        //categoryBlock.where = { id: { [Op.in]: args.filters.categories } }
+        console.log("-----------------------", getAllChildren(args.filters.categories) )
+        categoryBlock.where = { id: { [Op.in]: getAllChildren(args.filters.categories) } }
+      } else {
+        categoryBlock = {}
+      }
+
+
       let includeBlock = [
-        salemodeModelBlock,
+        //salemodeModelBlock,
 /*        {
           model: SaleMode,
           as: 'saleMode',
@@ -331,8 +371,17 @@ const resolvers = {
           where: { isoCode: args.filters.countryCode },
           required: true
         },
-        userModelBlock
+        //userModelBlock
       ]
+      if ( Object.keys(userModelBlock).length !== 0 ) {
+        includeBlock.push( userModelBlock )
+      }
+      if ( Object.keys(salemodeModelBlock).length !== 0 ) {
+        includeBlock.unshift( salemodeModelBlock )
+      }
+      if ( Object.keys(categoryBlock).length !== 0 ) {
+        includeBlock.push( categoryBlock )
+      }
 
       //This first where clause serves no purpose but to let the [Op.or] below to work.
       let whereBlock = {}
@@ -363,7 +412,7 @@ const resolvers = {
 
       // TODO:
       // args.filters.distance Long lat must be stored. Then calculate and exclude each.
-      // args.categories, args.templates, args.tags [String]
+      // args.templates, args.tags [Int]
       let optionBlock = {
         include: includeBlock,
 /*        include: [{
