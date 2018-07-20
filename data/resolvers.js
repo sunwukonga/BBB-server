@@ -229,12 +229,13 @@ const resolvers = {
       })
       .then( chats => {
         return chats.map( chat => {
-          args.chatIndexes.map( chatIndex => {
-            console.log("chat.id: " + chat.id)
-            if ( chat.id == chatIndex.chatId ) {
-              chat.lastMessageId = chatIndex.lastMessageId
-            }
-          })
+          if (args.chatIndexes) {
+            args.chatIndexes.map( chatIndex => {
+              if ( chat.id == chatIndex.chatId ) {
+                chat.lastMessageId = chatIndex.lastMessageId
+              }
+            })
+          }
           return chat
         })
       })
@@ -743,18 +744,7 @@ const resolvers = {
 
         let imagePromises = args.images.map( inputImage => {
           if (inputImage.deleted) {
-            return Image.findById( inputImage.imageId )
-            .then( image => {
-              return image.countChatmessage()
-              .then( noOfImages => {
-                if (noOfImages <= 1) {
-                  console.log( AWS.deleteObject( args.image.imageKey ) )
-                  return image.destroy()
-                  .then( () => null )
-                }
-                return null; //removed by the filter below.
-              })
-            })
+            return destroyS3andInstanceByImageId( inputImage.imageId )
           } else {
             return Image.findOne({where: {id: inputImage.imageId}})
             .then( image => {
@@ -932,6 +922,73 @@ const resolvers = {
         }
       })
     },
+    deleteChat(_, args, context) {
+      console.log("deleteChat has been called")
+      return Chat.findById( args.chatId )
+      .then( chat => {
+        if (chat) {
+          // chat exists
+          console.log("chat exists")
+          if ( chat.initUserId == context.userid || chat.recUserId == context.userid ) {
+            // userid authorized to delete.
+            console.log("User authorized to request delete of chat")
+            if ( chat.delRequestUserId ) {
+              // Someone has already deleted from their end
+              console.log("Someone has alread marked chat for deletion")
+              if ( chat.delRequestUserId != context.userid ) {
+                // AND it was the other user
+                // Destroy chat completely.
+                return chat.getChatmessages()
+                .then( chatMessages => {
+                  let deleteMessagePromises = chatMessages.map( chatMessage => {
+                    return chatMessage.getImage()
+                    .then( image => {
+                      if (image) {
+                        return destroyS3andInstanceByImageId( chatMessage.id )
+                      } return null
+                    })
+                    .then( () => chatMessage.destroy({force: true}))
+                    // *^^* CASCADE is set, but since we are here already...
+                  })
+                  return Promise.all( deleteMessagePromises )
+                  .then( () => {
+                    return chat.destroy()
+                    .then( () => true )
+                  })
+                })
+              } else {
+                // Do nothing
+                return Promise.reject( new Error("User has already deleted their end of this chat."))
+              }
+            }
+            else {
+              // No previous attempt to delete chat
+              console.log("Virgin attempt at deleting chat")
+              return chat.setDelRequestUser( context.userid )
+              .then( () => {
+                return chat.getChatmessages({
+                  where: { authorId: context.userid }
+                })
+                .then( chatMessages => {
+                  let deleteMessagePromises = chatMessages.map( chatMessage => {
+                    return chatMessage.getImage()
+                    .then( image => {
+                      if (image) {
+                        return destroyS3andInstanceByImageId( chatMessage.id )
+                      } else return null
+                    })
+                    .then( () => chatMessage.destroy({force: true}))
+                  })
+                  return Promise.all( deleteMessagePromises )
+                  .then( () => true )
+                })
+              })
+            }
+          }
+        }
+        return Promise.reject( new Error("Chat does not exist!"))
+      })
+    },
     sendChatMessage(_, args, context) {
       // create a message and add it [if image add image, if image & deleted, delete and do not add]
       // fetch all messages after lastMessageId
@@ -941,6 +998,9 @@ const resolvers = {
           return Promise.reject( new Error("chatId does not exist."))
         }
         if ( chat.initUserId == context.userid || chat.recUserId == context.userid ) {
+          if (chat.delRequestUserId == context.userid) {
+            return Promise.reject(new Error("User has deleted this chat."))
+          }
           return ChatMessage.create({
             // TODO: Some protection from ridiculously large messages?
             message: args.message
@@ -963,8 +1023,6 @@ const resolvers = {
                   })
                 })
               } else {
-                //Image.findOne({where: { id: args.image.imageId }})
-                //.then( image => chatMessage.setImage( image ))
                 setImagePromise = chatMessage.setImage( args.image.imageId )
               }
             }
@@ -1131,12 +1189,17 @@ const resolvers = {
     listing(chat) {
       return chat.getListing();
     },
-    chatMessages(chat) {
-      // Only include message id > lastMessageId
-      if (chat.lastMessageId) {
-        return chat.getChatmessages( {where: { id: { [Op.gt]: chat.lastMessageId }}} )
+    chatMessages(chat, _, context) {
+      if (chat.delRequestUserId && (chat.delRequestUserId == context.userid)) {
+        // Requesting user has deleted this chat. Ignore.
       } else {
-        return chat.getChatmessages();
+        // Only include message id > lastMessageId
+        if (chat.lastMessageId) {
+          return chat.getChatmessages( {where: { id: { [Op.gt]: chat.lastMessageId }}} )
+        } else {
+          // This will grab NEW chats.
+          return chat.getChatmessages();
+        }
       }
     }
   },
@@ -1162,5 +1225,20 @@ const resolvers = {
   },
 
 };
+
+const destroyS3andInstanceByImageId = (imageId) => {
+  return Image.findById( imageId )
+  .then( image => {
+    return image.countChatmessages()
+    .then( noOfImages => {
+      if (noOfImages == 1) {
+        console.log( AWS.deleteObject( image.imageKey ) )
+        return image.destroy({force: true})
+        .then( () => null )
+      }
+      return null
+    })
+  })
+}
 
 export default resolvers;

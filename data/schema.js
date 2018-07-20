@@ -111,6 +111,11 @@ type Mutation {
     listingId: String
   ): Chat
 
+  # Requests that a chat be deleted. If other user has already made this request, the chat is destroyed. If not, only requesting user's messages are deleted and chat is flagged for destruction.
+  deleteChat(
+    chatId: String!
+  ): Boolean
+
   sendChatMessage(
     chatId: String!
     message: String
@@ -118,6 +123,7 @@ type Mutation {
     lastMessageId: String
   ): [ChatMessage]
 
+  # Deletes a chat message. If other user has not yet received the message, they will not.
   deleteChatMessage(
     id: String
     lastMessageId: String = 0

@@ -285,8 +285,9 @@ ListingModel.belongsToMany(ImageModel, {through: 'listingImages'}); //listingIma
 // Chat Model
 ChatModel.belongsTo(UserModel, {as: 'initUser'});
 ChatModel.belongsTo(UserModel, {as: 'recUser'});
+ChatModel.belongsTo(UserModel, {as: 'delRequestUser'});
 ChatModel.belongsTo(ListingModel);
-ChatModel.hasMany(ChatMessageModel);
+ChatModel.hasMany(ChatMessageModel, {onDelete: 'CASCADE'})
 ChatMessageModel.belongsTo(ImageModel);
 ImageModel.hasMany(ChatMessageModel);
 
