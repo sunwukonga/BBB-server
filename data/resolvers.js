@@ -241,6 +241,7 @@ const resolvers = {
       })
     },
     searchListings(_, args, context) {
+      let consolidatedPromises = []
       let salemodeWhereBlock = {}
       if (args.filters.counterOffer) {
         salemodeWhereBlock.counterOffer = args.filters.counterOffer
@@ -316,33 +317,46 @@ const resolvers = {
         required: true
       }
       if (args.filters.categories && args.filters.categories.length > 0) {
-        // TODO: If a category has children. Search over all children as well.
-        const getAllChildren = ( cats ) => {
-          if (cats && cats.length > 0) {
-            return cats.reduce( (acc, cat) => {
-              if (cat.hasChildren) {
-                return acc.concat(cat.id, getAllChildren(cat.getChildren()) )
-              } else return acc.push(cat.id)
-            }, [])
-          } else {
-            return []
-          }
-        }
-        /*
-        expandedCategories = args.filters.categories.reduce( (acc, categoryId) => {
-          Category.findById( categoryId ) 
-          .then( cat => {
-            if (cat) {
-              acc.push(categoryId)
-              cat.getChildren()
-              .then(
+        let childrenPromises = []
+        const getAllChildren = ( catsPromise ) => {
+          return catsPromise
+          .then( cats => {
+            if (cats && cats.length > 0) {
+              return cats.reduce( (accP, cat) => {
+                return Promise.all([accP])
+                .then( values => {
+                  let [acc] = values
+                  acc.push( cat.id )
+                  return getAllChildren( cat.getChildren() )
+                  .then( allChildrenPromises => {
+                    return Promise.all( allChildrenPromises )
+                    .then( allChildren => {
+                      let myAcc = acc.concat( allChildren )
+                      return myAcc
+                    })
+                  })
+                })
+              }, Promise.resolve([]))
             } else {
+              return []
             }
           })
-        }, []) */
-        //categoryBlock.where = { id: { [Op.in]: args.filters.categories } }
-        console.log("-----------------------", getAllChildren(args.filters.categories) )
-        categoryBlock.where = { id: { [Op.in]: getAllChildren(args.filters.categories) } }
+        }
+        let categoriesPromise = Promise.all( args.filters.categories.map( catId => Category.findById( catId )) )
+        .then( cats => {
+          cats = cats.filter( cat => cat )
+          if (cats.length != 0) {
+            return getAllChildren( Promise.resolve(cats) )
+            .then( allCats => {
+              categoryBlock.where = { id: { [Op.in]: allCats} }
+            })
+          } else {
+            categoryBlock = {}
+            //silent fail if no valid category found
+            return false
+          }
+        })
+        consolidatedPromises.push( categoriesPromise )
       } else {
         categoryBlock = {}
       }
@@ -407,9 +421,6 @@ const resolvers = {
         whereBlock.id = { [Op.gt]: 0 }
       }
 
-      //if (args.categories)
-
-
       // TODO:
       // args.filters.distance Long lat must be stored. Then calculate and exclude each.
       // args.templates, args.tags [Int]
@@ -456,7 +467,8 @@ const resolvers = {
         optionBlock.where = whereBlock
       }
 
-      return Listing.findAll( optionBlock )
+      return Promise.all( consolidatedPromises )
+      .then( () => Listing.findAll( optionBlock ) )
 
 /*      return Listing.findAll({
         where: whereBlock,

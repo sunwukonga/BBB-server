@@ -363,11 +363,11 @@ input Filters {
   distance: Int
   priceMax: Float
   priceMin: Float
-  # List of categoryId's to include in search. If an id invalid, ignored. If all invalid, search ALL categories 
+  # List of categoryIds to include in search. Sub categories automatically included. If id invalid, id ignored.
   categories: [Int]
-  # List of templateId's. Same behavior as categories.
+  # List of templateIds. If id invalid, id ignored.
   templates: [Int]
-  # List of tagId's. Same behavior as categories.
+  # List of tagIds.
   tags: [Int]
   counterOffer: Boolean
 }
