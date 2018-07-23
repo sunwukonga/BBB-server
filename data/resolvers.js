@@ -42,6 +42,12 @@ const resolvers = {
     user(_, args, context) {
       return User.find({ where: args });
     },
+    getProfile(_, args, context) {
+      if (context.userid == "") {
+        throw new Error("Authorization header does not contain a user.");
+      }
+      return User.find({ where: {id: context.userid }});
+    },
     // TODO: This query cannot be accessible by normal users.
     allUsers(_, args, context) {
       return User.findAll();
@@ -240,6 +246,41 @@ const resolvers = {
         })
       })
     },
+    searchTemplates(_, args, context) {
+      let whereBlock = {}
+      if (args.terms) {
+        let likeArray = args.terms.reduce( (acc, term) => {
+            acc.push({ [Op.like]: '%' + term.replace(/[\W]+/g, "") + '%' })
+            return acc
+          }, [])
+        whereBlock = {
+          [Op.or]: {
+            title: {
+              [Op.or]: likeArray
+            },
+            description: {
+              [Op.or]: likeArray
+            },
+          },
+          id: { [Op.gt]: 0 }
+        }
+      }
+      let optionBlock = {
+        include: [
+          {
+            model: Category,
+            where: { id: args.categoryId },
+            required: true
+          },
+        ],
+        offset: (args.page - 1) * args.limit,
+        limit: args.limit,
+      }
+      if ( Object.keys(whereBlock).length !== 0 ) {
+        optionBlock.where = whereBlock
+      }
+      return Template.findAll( optionBlock )
+    },
     searchListings(_, args, context) {
       let consolidatedPromises = []
       let salemodeWhereBlock = {}
@@ -311,7 +352,27 @@ const resolvers = {
       } else {
         userModelBlock = {}
       }
+      //---------------------------------------
+      //  templates
+      //---------------------------------------
+      let templateModelBlock = {
+        model: Template,
+        as: 'template',
+        required: true
+      }
+      if (args.filters.templates && args.filters.templates.length != 0) {
+        templateModelBlock.where = { id: { [Op.in]: args.filters.templates} }
+      } else {
+        templateModelBlock = {}
+      }
 
+      //---------------------------------------
+      //  end templates
+      //---------------------------------------
+
+      //---------------------------------------
+      //  categories
+      //---------------------------------------
       let categoryBlock = {
         model: Category,
         required: true
@@ -360,33 +421,41 @@ const resolvers = {
       } else {
         categoryBlock = {}
       }
+      //---------------------------------------
+      // End Categories
+      //---------------------------------------
 
+      //---------------------------------------
+      // Tags
+      //---------------------------------------
+      let tagModelBlock
+      if (args.filters.tags && args.filters.tags !=0) {
+        tagModelBlock = {
+          model: Tag,
+          where: { id: { [Op.in]: args.filters.tags} },
+          required: true,
+        }
+      } else {
+        tagModelBlock = {}
+      }
+
+      //---------------------------------------
+      // End Tags
+      //---------------------------------------
 
       let includeBlock = [
-        //salemodeModelBlock,
-/*        {
-          model: SaleMode,
-          as: 'saleMode',
-          where: salemodeWhereBlock,
-          where: {
-            counterOffer: args.filters.counterOffer ? args.filters.counterOffer : { [Op.or]: [ true, false ] },
-            mode: args.filters.mode ? args.filters.mode : { [Op.or]: [ Modes.Barter, Modes.Sale, Modes.Donate, Modes.SaleBarter ] },
-            price: {
-              [Op.or]: {
-                [Op.lte]: args.filters.priceMax,
-                [Op.gte]: args.filters.priceMin
-              }
-            },
-          },
-          required: true
-        }, */
         {
           model: Country,
           where: { isoCode: args.filters.countryCode },
           required: true
         },
-        //userModelBlock
       ]
+      if ( Object.keys(tagModelBlock).length !== 0 ) {
+        includeBlock.push( tagModelBlock )
+      }
+      if ( Object.keys(templateModelBlock).length !== 0 ) {
+        includeBlock.push( templateModelBlock )
+      }
       if ( Object.keys(userModelBlock).length !== 0 ) {
         includeBlock.push( userModelBlock )
       }
@@ -397,7 +466,7 @@ const resolvers = {
         includeBlock.push( categoryBlock )
       }
 
-      //This first where clause serves no purpose but to let the [Op.or] below to work.
+      //This 'id' where clause serves no purpose but to let the [Op.or] below to work.
       let whereBlock = {}
       if (args.terms) {
         let likeArray = args.terms.reduce( (acc, term) => {
@@ -423,7 +492,12 @@ const resolvers = {
 
       // TODO:
       // args.filters.distance Long lat must be stored. Then calculate and exclude each.
-      // args.templates, args.tags [Int]
+      // Long Lat must be stored with each Listing
+      // Viewer Long Lat must be sent with each search that requires distance.
+      //  let R = 6371
+      //  let x = (lambda2 - lambda1) * Math.cos((phi2 + phi1)/2)
+      //  let y = (phi2 - phi1)
+      //  let d = Math.sqrt(x*x + y*y) * R
       let optionBlock = {
         include: includeBlock,
 /*        include: [{
@@ -602,7 +676,7 @@ const resolvers = {
                 "userid": user.id
               , "role": [
                   {
-                     "name": "GENERAL"
+                     "name": "BARGAINER"
                   }
                 ]
             }
@@ -629,7 +703,7 @@ const resolvers = {
     createListing(_, args, context) {
       let promiseCollection = []
       if (context.userid == "") {
-        throw new Error("Authorization header does not contain a user authorized for this mutation.");
+        throw new Error("Authorization header does not contain a user.");
       }
       let submittedMode = {mode: args.mode}
       if (args.cost >= 0)

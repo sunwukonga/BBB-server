@@ -654,8 +654,10 @@ db.sync({ force: true }).then(() => {
             listing.createImage({imageURL: 'Images.Trollie'}).catch(e => console.log("---------------------------4-----------------------"))
             listing.setSaleMode( sale ).catch(e => console.log("---------------------------5-----------------------"))
             listing.setTemplate( casual.integer(1,2) ).catch(e => console.log("---------------------------6-----------------------")) //relies on two templates created above.
+            listing.addTag( casual.integer(1,2) ).catch(e => console.log("---------------------------6.5-----------------------")) //relies on two templates created above.
             listing.setCountry(singapore).catch(e => console.log("---------------------------7-----------------------"))
-//            CategoryModel.findAll().then( categories => categories.map( category => console.log( JSON.stringify(category))))
+            listing.setCategory( casual.integer(12, 40) ).catch(e => console.log("---------------------------8-----------------------" + e))
+            listing.setCountry(singapore).catch(e => console.log("---------------------------7-----------------------"))
             listing.setCategory( casual.integer(12, 40) ).catch(e => console.log("---------------------------8-----------------------" + e))
             // create some View mocks
 //            return View.update(

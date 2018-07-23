@@ -14,14 +14,13 @@ type Query {
   allCategoriesFlat: [Category]
   # Returns all categories as a nested list
   allCategoriesNested: [Category]
-  allTemplates(categoryId: String!): [Template]
+  allTemplates(categoryId: Int!): [Template]
   getFortuneCookie: String @cacheControl (maxAge: 10)
   getChatMessages(chatIndexes: [ChatIndex]): [Chat]
-  getListing(id: String): Listing
+  getListing(id: Int!): Listing
   searchTemplates(
     terms: [String]
-    categoryId: String!
-    countryCode: String!
+    categoryId: Int!
     limit: Int = 20
     page: Int = 1
   ): [Template]
@@ -60,7 +59,7 @@ type Mutation {
 
   loginFacebook(
     token: String!
-    countryId: String
+    countryCode: String
   ): String
 
   getSignedUrl(
@@ -79,54 +78,53 @@ type Mutation {
     post: Postage
     title: String
     description: String
-    category: String
-    template: String
-    tags: [String]
+    categoryId: Int
+    templateId: Int
+    tagIds: [Int]
     ): Listing
   
   # Flag a listing for deletion
   flagListingForDeletion(
     # This is the id of a Listing
-    listingId: String!
+    listingId: Int!
     # This is the reason for flagging the Listing, i.e. no response from seller, old, dishonest description
     reason: String
   ): Int
   
   # Cancels deletion flag and confirs a three day protection 
   protectFromDeleteFlag(
-    listingId: String!
+    listingId: Int!
   ): Boolean
 
   likeListing(
-    listingId: String!
+    listingId: Int!
     like: Boolean = true
   ): Boolean
   
-  incrementViewings(
-    listingId: String!
+  incrementViewings( listingId: Int!
   ): Int
 
   createChat(
-    recUserId: String
-    listingId: String
+    recUserId: Int!
+    listingId: Int!
   ): Chat
 
   # Requests that a chat be deleted. If other user has already made this request, the chat is destroyed. If not, only requesting user's messages are deleted and chat is flagged for destruction.
   deleteChat(
-    chatId: String!
+    chatId: Int!
   ): Boolean
 
   sendChatMessage(
-    chatId: String!
+    chatId: Int!
     message: String
     image: UploadedImage
-    lastMessageId: String
+    lastMessageId: Int
   ): [ChatMessage]
 
   # Deletes a chat message. If other user has not yet received the message, they will not.
   deleteChatMessage(
-    id: String
-    lastMessageId: String = 0
+    id: Int!
+    lastMessageId: Int = 0
   ): [ChatMessage]
 
   addCountry(
@@ -196,49 +194,49 @@ type Mutation {
   ): Currency
 
   addCategory(
-    name: String!
-    parentId: String!
+    name: Int!
+    parentId: Int!
   ): Category
 
   editCategory(
-    id: String!
+    id: Int!
     name: String
-    parentId: String
+    parentId: Int
   ): Category
 
   enableCategory(
-    id: String!
+    id: Int!
   ): Category
 
   disableCategory(
-    id: String!
+    id: Int!
   ): Category
 
   addTemplate(
     title: String!
     description: String!
-    categoryId: String!
-    tagIds: [String]
+    categoryId: Int!
+    tagIds: [Int]
     images: [UploadedImage]
   ): Template
 
   editTemplate(
-    id: String!
+    id: Int!
     title: String
     description: String
-    categoryId: String
-    setTagIds: [String]
-    addTagIds: [String]
+    categoryId: Int
+    setTagIds: [Int]
+    addTagIds: [Int]
     setImages: [UploadedImage]
     addImages: [UploadedImage]
   ): Template
 
   enableTemplate(
-    id: String!
+    id: Int!
   ): Category
 
   disableTemplate(
-    id: String!
+    id: Int!
   ): Category
 
 }
@@ -297,22 +295,24 @@ input Postage {
 }
 
 type Image {
-  id: String
+  id: Int
+  imageKey: String
   imageURL: String
 }
 
 type Category {
-  id: String
+  id: Int
   name: String
   children: [Category]
 }
 
 type Tag {
+  id: Int
   name: String!
 }
 
 type Template {
-  id: String
+  id: Int
   title: String!
   description: String!
   primaryImage: Image
@@ -327,21 +327,21 @@ type BarterOption {
 }
 
 input UploadedImage {
-  imageId: String!
+  imageId: Int!
   imageKey: String
   primary: Boolean!
   deleted: Boolean!
 }
 
 input TemplateQty {
-  templateId: String!
+  templateId: Int!
   quantity: Int!
-  tags: [String]
+  tags: [Int]
 }
 
 input ChatIndex {
-  chatId: String!
-  lastMessageId: String = 0
+  chatId: Int!
+  lastMessageId: Int = 0
 }
 
 input Filters {
@@ -373,7 +373,7 @@ input Filters {
 }
 
 type Chat {
-  id: String
+  id: Int
   initUser: User
   recUser: User
   listing: Listing
@@ -383,15 +383,15 @@ type Chat {
 }
 
 type ChatMessage {
-  id: String
+  id: Int
   message: String
   image: Image
-  authorId: String
+  authorId: Int
   time: Int
 }
 
 type Listing {
-  id: String
+  id: Int
   title: String
   description: String
   primaryImage: Image
@@ -436,7 +436,7 @@ type LogStatus {
 }
 
 type SignedUrl {
-  id: String!
+  id: Int!
   key: String!
   bucket: String!
   X_Amz_Algorithm: String!
