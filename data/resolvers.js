@@ -1,6 +1,7 @@
 import { createError, isInstance } from 'apollo-errors';
 import { Providers } from './constants/';
 import Modes from './constants/Modes';
+import Roles from './constants/roles';
 import jwt from 'jsonwebtoken';
 import Sequelize from 'sequelize';
 import AWS from 'aws-sdk';
@@ -40,7 +41,16 @@ const FooError = createError('FooError', {
 const resolvers = {
   Query: {
     user(_, args, context) {
-      return User.find({ where: args });
+      if (context.roles.includes(Roles.Super)) {
+        //Authorized to check everyone's user record
+        return User.find({ where: args });
+      }
+      if (context.roles.includes(Roles.Admin)) {
+        //Authorized to check user records of administered country.
+            
+      }
+      return Promise.reject(new Error("User not authorized to access this user's record."))
+
     },
     getProfile(_, args, context) {
       if (context.userid == "") {
@@ -247,6 +257,61 @@ const resolvers = {
       })
     },
     searchTemplates(_, args, context) {
+      let consolidatedPromises = []
+      //---------------------------------------
+      //  categories
+      //---------------------------------------
+      let categoryBlock = {
+        model: Category,
+        required: true
+      }
+      if (args.categoryIds && args.categoryIds.length > 0) {
+        let childrenPromises = []
+        const getAllChildren = ( catsPromise ) => {
+          return catsPromise
+          .then( cats => {
+            if (cats && cats.length > 0) {
+              return cats.reduce( (accP, cat) => {
+                return Promise.all([accP])
+                .then( values => {
+                  let [acc] = values
+                  acc.push( cat.id )
+                  return getAllChildren( cat.getChildren() )
+                  .then( allChildrenPromises => {
+                    return Promise.all( allChildrenPromises )
+                    .then( allChildren => {
+                      let myAcc = acc.concat( allChildren )
+                      return myAcc
+                    })
+                  })
+                })
+              }, Promise.resolve([]))
+            } else {
+              return []
+            }
+          })
+        }
+        let categoriesPromise = Promise.all( args.categoryIds.map( catId => Category.findById( catId )) )
+        .then( cats => {
+          cats = cats.filter( cat => cat )
+          if (cats.length != 0) {
+            return getAllChildren( Promise.resolve(cats) )
+            .then( allCats => {
+              categoryBlock.where = { id: { [Op.in]: allCats} }
+            })
+          } else {
+            categoryBlock = {}
+            //silent fail if no valid category found
+            return false
+          }
+        })
+        consolidatedPromises.push( categoriesPromise )
+      } else {
+        categoryBlock = {}
+      }
+      //---------------------------------------
+      // End Categories
+      //---------------------------------------
       let whereBlock = {}
       if (args.terms) {
         let likeArray = args.terms.reduce( (acc, term) => {
@@ -266,20 +331,17 @@ const resolvers = {
         }
       }
       let optionBlock = {
-        include: [
-          {
-            model: Category,
-            where: { id: args.categoryId },
-            required: true
-          },
-        ],
         offset: (args.page - 1) * args.limit,
         limit: args.limit,
       }
       if ( Object.keys(whereBlock).length !== 0 ) {
         optionBlock.where = whereBlock
       }
-      return Template.findAll( optionBlock )
+      if ( Object.keys(categoryBlock).length !== 0 ) {
+        optionBlock.include = [ categoryBlock ]
+      }
+      return Promise.all( consolidatedPromises )
+      .then( () => Template.findAll( optionBlock ) )
     },
     searchListings(_, args, context) {
       let consolidatedPromises = []
@@ -959,6 +1021,17 @@ const resolvers = {
       //   map over images, if discarded: delete S3 record and image ref in database, 
       //                            else: update Image with URL
     },
+    addTemplate(_, args, context) {
+
+    },
+/*  addTemplate(
+    title: String!
+    description: String!
+    categoryId: Int!
+    tagIds: [Int]
+    images: [UploadedImage]
+  ): Template */
+
     incrementViewings(_, args, context) {
       return Listing.findOne({ where: { id: args.listingId }})
       .then( listing => {

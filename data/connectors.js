@@ -149,12 +149,12 @@ const CountryModel = db.define('country', {
 });
 // TODO: Link language and currency to CountryModel
 const LanguageModel = db.define('language', {
-  iso639_2: { type: Sequelize.STRING },
+  iso639_2: { type: Sequelize.STRING, primaryKey: true },
   name: { type: Sequelize.STRING },
   disabled: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false },
 });
 const CurrencyModel = db.define('currency', {
-  iso4217: { type: Sequelize.STRING },
+  iso4217: { type: Sequelize.STRING, primaryKey: true },
   currencyName: { type: Sequelize.STRING },
   currencySymbol: { type: Sequelize.STRING },
   symbolPrepend: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: true },
@@ -162,6 +162,20 @@ const CurrencyModel = db.define('currency', {
 });
 const CategoryModel = db.define('category', {
   name: { type: Sequelize.STRING },
+});
+const ContentModel = db.define('content', {
+  meaning: { type: Sequelize.STRING },
+});
+const TranslationModel = db.define('translation', {
+  text: { type: Sequelize.STRING },
+});
+const LocusModel = db.define('locus', {
+  name: { type: Sequelize.STRING },
+});
+const RatingModel = db.define('rating', {
+  good: { type: Sequelize.BOOLEAN },
+  weight: { type: Sequelize.INTEGER },
+  comment: { type: Sequelize.STRING },
 });
 const LocationModel = db.define('location', {
   latitude: { type: Sequelize.FLOAT },
@@ -227,6 +241,10 @@ const BarterOptionTemplatesModel = db.define('barterOptionTemplates', {
   },
   quantity: { type: Sequelize.INTEGER, allowNull: false, defaultValue: 1 },
 });
+// Join table for ListingModel and User (Views)
+const CountryUsersModel = db.define('listingViews', {
+  visits: { type: Sequelize.INTEGER, allowNull: false, defaultValue: 1 },
+});
 //const BarterGroupModel = db.define('barterGroup');
 
 // ****************************
@@ -236,11 +254,14 @@ const BarterOptionTemplatesModel = db.define('barterOptionTemplates', {
 // User Model
 ListingModel.belongsTo(UserModel, {as: 'user'});
 UserModel.belongsToMany(ListingModel, {as: 'Like', through: 'listingLikes'}); // UserModel.createLike, getLikes, setLikes, addLike,addLikes
-CountryModel.hasMany(UserModel, {as: 'User', foreignKey: 'country'});
+//CountryModel.hasMany(UserModel, {as: 'User', foreignKey: 'countryCode'});
+CountryModel.belongsToMany(UserModel, {as: 'User', through: 'countryUsers'})
+UserModel.belongsToMany(CountryModel, {as: 'Country', through: 'countryUsers'})
 UserModel.hasMany(EmailModel);
 UserModel.hasMany(OauthModel);
 UserModel.belongsTo(ImageModel, {as: 'profileImage'});
-//UserModel.belongsTo(CountryModel, {foreignKey: 'country', targetKey: 'isoCode'});
+UserModel.belongsTo(CountryModel, {as: 'adminCountry'})
+UserModel.belongsToMany(LanguageModel, {as: 'language', through: 'userLanguage'})
 // Listing Model
 UserModel.hasMany(ListingModel); //UserModel has setListingModel method; ListingModel has a userId foreign key
 ListingModel.belongsToMany(UserModel, {as: 'Like', through: 'listingLikes'});// ListingModel.createLike, getLikes, setLikes, addLike,addLikes
@@ -252,10 +273,6 @@ CategoryModel.belongsTo(CategoryModel, {as: 'parent'})
 
 CategoryModel.hasMany(ListingModel, {as: 'listing'});
 ListingModel.belongsTo(CategoryModel);
-//const City = sequelize.define('city', { countryCode: Sequelize.STRING });
-//const Country = sequelize.define('country', { isoCode: Sequelize.STRING });
-//Country.hasMany(City, {foreignKey: 'countryCode', sourceKey: 'isoCode'});
-//City.belongsTo(Country, {foreignKey: 'countryCode', targetKey: 'isoCode'});
 
 ListingModel.belongsTo(CountryModel);
 ListingModel.belongsTo(SaleModeModel, {as: 'saleMode'});
@@ -273,7 +290,6 @@ BarterOptionModel.belongsTo(SaleModeModel);
 ExchangeModeModel.belongsTo(SaleModeModel);
 BarterOptionModel.belongsToMany(TemplateModel, {through: 'barterOptionTemplates'});
 BarterOptionTemplatesModel.belongsToMany(TagModel, { through: 'barterOptionTags'});
-//ExchangeModeModel.belongsTo(SaleModeModel);
 ExchangeModeModel.belongsTo(LocationModel);
 ExchangeModeModel.belongsTo(CurrencyModel);
 
@@ -291,8 +307,30 @@ ChatModel.belongsTo(ListingModel);
 ChatModel.hasMany(ChatMessageModel, {onDelete: 'CASCADE'})
 ChatMessageModel.belongsTo(ImageModel);
 ImageModel.hasMany(ChatMessageModel);
-
 ChatMessageModel.belongsTo(UserModel, {as: 'author'});
+
+// ------
+// I18n
+// ------
+LocusModel.hasMany(LocusModel, {as: 'Children', foreignKey: 'parentId'})
+LocusModel.belongsTo(LocusModel, {as: 'parent'})
+LocusModel.hasMany(ContentModel)
+
+ContentModel.hasMany(ContentModel, {as: 'Children', foreignKey: 'parentId'})
+ContentModel.belongsTo(ContentModel, {as: 'parent'})
+ContentModel.belongsTo(CountryModel)
+ContentModel.hasMany(RatingModel, {as: 'Rating'})
+ContentModel.belongsTo(UserModel, {as: 'author'})
+
+RatingModel.belongsTo(UserModel, {as: 'reviewer'})
+RatingModel.hasMany(RatingModel, {as: 'Comment', foreignKey: 'parentId'})
+RatingModel.belongsTo(RatingModel, {as: 'parent'})
+
+TranslationModel.belongsTo(ContentModel)
+TranslationModel.belongsTo(LanguageModel)
+TranslationModel.belongsTo(UserModel, {as: 'translator'})
+
+
 // SaleMode Model
 //
 

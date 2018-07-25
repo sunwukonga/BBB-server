@@ -30,10 +30,8 @@ const jwtDecode = require('jwt-decode');
 //}
 const token = jwt.sign({
     "userid": ""
-  , "role": [
-      {
-         "name": "GENERAL"
-      }
+  , "roles": [
+      "GENERAL"
     ]
   }, process.env.JWT_SECRET_KEY );
 
@@ -108,8 +106,9 @@ graphQLServer.use(
         , cacheControl: true
         , context: {
               userid: req.user.userid
-//            , test: req.test
-      }};
+            , roles: req.user.roles
+          }
+      };
     }));
 graphQLServer.use('/graphiql', graphiqlExpress({ endpointURL: '/graphql' }));
 

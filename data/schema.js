@@ -20,7 +20,7 @@ type Query {
   getListing(id: Int!): Listing
   searchTemplates(
     terms: [String]
-    categoryId: Int!
+    categoryIds: [Int]
     limit: Int = 20
     page: Int = 1
   ): [Template]
@@ -314,9 +314,10 @@ type Tag {
 type Template {
   id: Int
   title: String!
-  description: String!
+  description: String
   primaryImage: Image
   secondaryImages: [Image]
+  categoryId: Int!
   tags: [Tag]
 }
 
