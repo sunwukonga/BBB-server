@@ -945,19 +945,26 @@ const resolvers = {
           });
         }
 
-        let imagePromises = args.images.map( inputImage => {
-          if (inputImage.deleted) {
-            return destroyS3andInstanceByImageId( inputImage.imageId )
-          } else {
-            return Image.findOne({where: {id: inputImage.imageId}})
-            .then( image => {
-              image.listingImages = {
-                primary: inputImage.primary
-              }
-              return image;
-            });
-          }
-        }).filter( image => image );
+        let imagePromises
+        if (args.images) {
+          let imagePromises = args.images.map( inputImage => {
+            if (inputImage.deleted) {
+              return destroyS3andInstanceByImageId( inputImage.imageId )
+            } else {
+              return Image.findOne({where: {id: inputImage.imageId}})
+              .then( image => {
+                if (image) {
+                  image.listingImages = {
+                    primary: inputImage.primary
+                  }
+                  return image;
+                } else {
+                  return Promise.reject(new Error("Image Id not found. imageId: " + inputImage.imageId))
+                }
+              });
+            }
+          }).filter( image => image );
+        }
 
         return Promise.all(imagePromises)
         .then( images => {
