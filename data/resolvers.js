@@ -1384,7 +1384,10 @@ const resolvers = {
       .then(images => {
         if (images) {
           console.log("IMAGES: ", images)
-          images.filter(image => image.listingImages.dataValues.primary == true).then(images => images[0]);
+          let result = images.filter(image => image.listingImages.dataValues.primary == true)
+          return result[0]
+        } else {
+          return null
         }
       })
     },
