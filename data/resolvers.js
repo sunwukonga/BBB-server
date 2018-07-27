@@ -945,7 +945,7 @@ const resolvers = {
           });
         }
 
-        let imagePromises
+        let imagePromises = []
         if (args.images) {
           let imagePromises = args.images.map( inputImage => {
             if (inputImage.deleted) {
@@ -980,7 +980,10 @@ const resolvers = {
               }
               return Promise.reject(new Error("Country not found. CountryCode: " + args.countryCode))
             })
-            let addListingsPromise = listing.addImages(images)
+            let addListingsPromise
+            if (images && images.length > 0) {
+              addListingsPromise  = listing.addImages(images)
+            }
             let categoryPromise = Category.findOne({ where: { id: args.category } })
             .then( cat => {
               if (cat) {
@@ -997,31 +1000,33 @@ const resolvers = {
             })
             let templatePromise = listing.setTemplate( args.template ).catch( (e) => console.log("ERROR: Listing.setTemplate: ", e));
             let salemodePromise = listing.setSaleMode( mode ).catch( (e) => console.log("ERROR: Listing.setSaleMode: ", e));
-            let tagPromises
+            let tagPromises = []
             if (args.tags && args.tags.length > 0) {
               tagPromises = args.tags.map( tagId => Tag.findOne({ where: {id: tagId} }).catch( (e) => { console.log("Error: " + e); return Promise.reject(new Error("User Error: listing: tagId")) }))
             }
             return Promise.all( tagPromises )
             .then( tags => {
-              return listing.setTags( tags )
-              .catch( e => {
-                console.log("_____##### Error setting tags on listing: " + e)
-                return Promise.reject(new Error("User Error: listing: tags"))
-              })
-              .then( () => {
-                return Promise.all( [countryPromise, categoryPromise, addListingsPromise, userPromise, templatePromise, salemodePromise].concat( promiseCollection ) )
-//                .catch( e => {
-//                  console.log("_____##### Catching 7th Level out: " + e)
-//                  return Promise.reject(e)
-//                })
-                .then( () => {
-                  return listing
+              if (tags) {
+                return listing.setTags( tags )
+                .catch( e => {
+                  console.log("_____##### Error setting tags on listing: " + e)
+                  return Promise.reject(new Error("User Error: listing: tags"))
                 })
-              })
-//              .catch( e => {
-//                console.log("_____##### Catching 8th Level out: " + e)
-//                return Promise.reject(e)
-//              })
+                .then( () => {
+                  return Promise.all( [countryPromise, categoryPromise, addListingsPromise, userPromise, templatePromise, salemodePromise].concat( promiseCollection ) )
+  //                .catch( e => {
+  //                  console.log("_____##### Catching 7th Level out: " + e)
+  //                  return Promise.reject(e)
+  //                })
+                  .then( () => {
+                    return listing
+                  })
+                })
+  //              .catch( e => {
+  //                console.log("_____##### Catching 8th Level out: " + e)
+  //                return Promise.reject(e)
+  //              })
+              }
             })
 //            .catch( e => {
 //              console.log("_____##### Catching 9th Level out: " + e)
