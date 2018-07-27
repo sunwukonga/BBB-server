@@ -47,10 +47,16 @@ const resolvers = {
       }
       if (context.roles.includes(Roles.Admin)) {
         //Authorized to check user records of administered country.
-            
+        return User.find({
+          where: args,
+          include: {
+            model: Country,
+            as: 'Country',
+            where: { isoCode: context.countryCode }
+          },
+        });
       }
       return Promise.reject(new Error("User not authorized to access this user's record."))
-
     },
     getProfile(_, args, context) {
       if (context.userid == "") {
@@ -960,13 +966,34 @@ const resolvers = {
             , description: args.description
           }).catch( (e) => console.log("ERROR: ListingPromise: ", e))
           .then( listing => {
-            let countryPromise = Country.findOne({where: {isoCode: args.countryCode}}).then( country => listing.setCountry(country));
-            let addListingsPromise = listing.addImages(images);
-            let categoryPromise = Category.findOne({ where: { id: args.category } }).then( cat => cat.addListing( listing ));
-            let userPromise = User.findOne({ where: { id: context.userid }}).then( user => user.addListing( listing ));
+            let countryPromise = Country.findOne({where: {isoCode: args.countryCode}})
+            .then( country => {
+              if (country) {
+                return listing.setCountry(country)
+              }
+              return Promise.reject(new Error("Country not found. CountryCode: " + args.countryCode))
+            })
+            let addListingsPromise = listing.addImages(images)
+            let categoryPromise = Category.findOne({ where: { id: args.category } })
+            .then( cat => {
+              if (cat) {
+                return cat.addListing( listing )
+              }
+              return Promise.reject(new Error("Category not found. CategoryCode: " + args.category))
+            })
+            let userPromise = User.findOne({ where: { id: context.userid }})
+            .then( user => {
+              if (user) {
+                return user.addListing( listing )
+              }
+              return Promise.reject(new Error("User not found. UserId: " + context.userid))
+            })
             let templatePromise = listing.setTemplate( args.template ).catch( (e) => console.log("ERROR: Listing.setTemplate: ", e));
             let salemodePromise = listing.setSaleMode( mode ).catch( (e) => console.log("ERROR: Listing.setSaleMode: ", e));
-            let tagPromises = args.tags.map( tagId => Tag.findOne({ where: {id: tagId} }).catch( (e) => { console.log("Error: " + e); return Promise.reject(new Error("User Error: listing: tagId")) }))
+            let tagPromises
+            if (args.tags && args.tags.length > 0) {
+              tagPromises = args.tags.map( tagId => Tag.findOne({ where: {id: tagId} }).catch( (e) => { console.log("Error: " + e); return Promise.reject(new Error("User Error: listing: tagId")) }))
+            }
             return Promise.all( tagPromises )
             .then( tags => {
               return listing.setTags( tags )

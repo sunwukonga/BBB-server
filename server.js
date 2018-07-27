@@ -31,8 +31,9 @@ const jwtDecode = require('jwt-decode');
 const token = jwt.sign({
     "userid": ""
   , "roles": [
-      "GENERAL"
+      "ADMIN"
     ]
+  , "countryCode": 'SG'
   }, process.env.JWT_SECRET_KEY );
 
 console.log('Token: ' + token);
@@ -107,6 +108,7 @@ graphQLServer.use(
         , context: {
               userid: req.user.userid
             , roles: req.user.roles
+            , countryCode: req.user.countryCode
           }
       };
     }));

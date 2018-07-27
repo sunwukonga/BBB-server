@@ -163,14 +163,18 @@ const CurrencyModel = db.define('currency', {
 const CategoryModel = db.define('category', {
   name: { type: Sequelize.STRING },
 });
-const ContentModel = db.define('content', {
+const ContentModel = db.define('Content', {
   meaning: { type: Sequelize.STRING },
+  countryIsoCode: { type: Sequelize.STRING, unique: 'contentCountry' },
+  locusId: { type: Sequelize.INTEGER, unique: 'contentCountry' },
 });
 const TranslationModel = db.define('translation', {
   text: { type: Sequelize.STRING },
 });
 const LocusModel = db.define('locus', {
-  name: { type: Sequelize.STRING },
+  //name: { type: Sequelize.STRING, primaryKey: true },
+  name: { type: Sequelize.STRING, unique: 'nameIndex' },
+  parentId: { type: Sequelize.INTEGER,  unique: 'nameIndex' },
 });
 const RatingModel = db.define('rating', {
   good: { type: Sequelize.BOOLEAN },
@@ -312,23 +316,31 @@ ChatMessageModel.belongsTo(UserModel, {as: 'author'});
 // ------
 // I18n
 // ------
-LocusModel.hasMany(LocusModel, {as: 'Children', foreignKey: 'parentId'})
+LocusModel.hasMany(LocusModel, {as: 'Children'})
 LocusModel.belongsTo(LocusModel, {as: 'parent'})
 LocusModel.hasMany(ContentModel)
-
-ContentModel.hasMany(ContentModel, {as: 'Children', foreignKey: 'parentId'})
-ContentModel.belongsTo(ContentModel, {as: 'parent'})
+ContentModel.belongsTo(LocusModel)
 ContentModel.belongsTo(CountryModel)
-ContentModel.hasMany(RatingModel, {as: 'Rating'})
+ContentModel.hasMany(RatingModel, {as: 'Rating', foreignKey: 'contentId'})
 ContentModel.belongsTo(UserModel, {as: 'author'})
+ContentModel.hasMany(ContentModel, {as: 'OtherContent', foreignKey: 'masterContentId'})
+ContentModel.belongsTo(ContentModel, {as: 'masterContent'})
 
+RatingModel.belongsTo(ContentModel, {as: 'content'})
 RatingModel.belongsTo(UserModel, {as: 'reviewer'})
+// parent to target child (target child gets parentId added to it which holds the id of parent
 RatingModel.hasMany(RatingModel, {as: 'Comment', foreignKey: 'parentId'})
+// child contains parent
 RatingModel.belongsTo(RatingModel, {as: 'parent'})
 
+ContentModel.hasMany(TranslationModel)
 TranslationModel.belongsTo(ContentModel)
-TranslationModel.belongsTo(LanguageModel)
+TranslationModel.belongsTo(LanguageModel, {foreignKey: 'iso639_2', targetKey: 'iso639_2'})
 TranslationModel.belongsTo(UserModel, {as: 'translator'})
+TranslationModel.hasMany(RatingModel, {as: 'Rating', foreignKey: 'translationId'})
+RatingModel.belongsTo(TranslationModel)
+TranslationModel.hasMany(TranslationModel, {as: 'Edit', foreignKey: 'parentId'})
+TranslationModel.belongsTo(TranslationModel, {as: 'parent'})
 
 
 // SaleMode Model
@@ -397,6 +409,10 @@ db.sync({ force: true }).then(() => {
   let engPromise = LanguageModel.create({
       iso639_2: 'eng'
     , name: 'English'
+  })
+  let msaPromise = LanguageModel.create({
+      iso639_2: 'msa'
+    , name: 'Malay'
   })
   let sgdPromise = CurrencyModel.create({
       iso4217: 'SGD'

@@ -6,7 +6,7 @@ import resolvers from './resolvers.js';
 // loginFacebook will check for a user with the associated email address and facebook id. Create user if not exist, return jwt token for authentication
 const typeDefs = `
 type Query {
-  user(id: Int, firstName: String, lastName: String): User
+  user(id: Int!): User
   allUsers: [User]
   allImages: [Image]
   allCountries: [Country]
@@ -127,6 +127,10 @@ type Mutation {
     lastMessageId: Int = 0
   ): [ChatMessage]
 
+  createLocus(
+    parentId: Int!
+
+  ): Locus
   addCountry(
     isoCode: String!
     name: String!
@@ -239,6 +243,95 @@ type Mutation {
     id: Int!
   ): Category
 
+  
+
+  # SUPER Only [Returns contentAnchorId]
+  createLocus(
+    name: String!
+    parentId: Int
+  ): Int
+
+  # SUPER Only
+  setContentToLocus(
+    contentId: Int!
+    locusId: Int!
+  ): Int 
+
+  # SUPER + ADMIN Only [Returns: countryContentId]
+  createContent(
+    meaning: String!
+    locusId: Int!
+    # Required for SUPER, ignored for ADMIN
+    countryIsoCode: String!
+  ): Int
+
+  # SUPER + ADMIN Only [Warning: for small changes only. Non-trackable]
+  # If a large edit, or a change of meaning is required. Create new content. 
+  editContent(
+    meaning: String!
+    countryContentId: Int!
+  ): Content
+
+  # SUPER + ADMIN
+  # Will fail if attached to locus, or rating too high
+  deleteContent(
+    contentId: Int
+  ): Boolean
+
+  # For SUPER + ADMIN returns most highly rated
+  # For other roles, returns most highly rated, unless content has been added by calling user.
+  getContent(
+    locusId: Int!
+    countryCode: String!
+    languageCodes: [String]!
+    preferMyContent: Boolean = true
+  ): [Locus]
+
+  createTranslation(
+    text: String!
+    contentId: Int!
+    iso639_2: String!
+  ): Translation
+
+  editTranslation(
+    text: String!
+    parentId: Int!
+  ): Translation
+
+  rateContent(
+    contentId: Int!
+    good: Boolean!
+    comment: String
+  ): Rating
+
+  unrateContent(
+    ratingId: Int! 
+  ): Boolean
+ 
+  rateRating(
+    ratingId: Int!
+    good: Boolean!
+    comment: String
+  ): Rating
+
+  unrateRating(
+    ratingId: Int! 
+  ): Boolean
+ 
+  rateTranslation(
+    translationId: Int!
+    good: Boolean!
+    comment: String
+  ): Rating
+
+  unrateTranslation(
+    ratingId: Int!
+  ): Boolean
+ 
+  # Deletion will only succeed if it is NOT the current default.
+  deleteTranslation(
+    translationId: Int!
+  ): Boolean
 }
 
 type User {
@@ -327,6 +420,41 @@ type BarterOption {
   tags: [Tag]
 }
 
+type Locus {
+  name: String!
+  parentId: Int!
+  children: [Locus]
+  content: [Content]
+}
+
+type Content {
+  meaning: String!
+  author: User
+  authorId: Int
+  country: Country
+  countryId: Int
+  translations: [Translation]
+  ratings: [Rating]
+}
+
+type Translation {
+  text: String!
+  languageId: String!
+  translatorId: Int!
+  contentId: Int
+  ratings: [Rating]
+}
+
+type Rating {
+  good: Boolean!
+  weight: Int!
+  comment: String
+  ratings: [Rating]
+  contentId: Int
+  translationId: Int
+}
+
+
 input UploadedImage {
   imageId: Int!
   imageKey: String
@@ -352,10 +480,10 @@ input Filters {
   countryCode: String!
   # Number of seconds (not milliseconds) to search into the past.
   seconds: Int
-  # Rating:  1 -> 000001 (base 2) -> [0] stars<br />
-  # Rating:  3 -> 000011 -> [0,1] stars<br />
-  # Rating:  8 -> 001000 -> [3] stars<br />
-  # Rating: 12 -> 001100 -> [3,2] stars<br />
+  # Rating:  1 -> 000001 (base 2) -> [0] stars
+  # Rating:  3 -> 000011 -> [0,1] stars
+  # Rating:  8 -> 001000 -> [3] stars
+  # Rating: 12 -> 001100 -> [3,2] stars
   rating: Int = 63
   # Minimum verification is 1. 
   # Verification: 28 -> 11100 -> [5,4,3] stars
