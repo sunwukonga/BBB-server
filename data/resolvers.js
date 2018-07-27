@@ -1380,7 +1380,13 @@ const resolvers = {
     },
     primaryImage(listing) {
 //      listing.getImage().then(images => images.filter(image => image.listingImages.dataValues.primary == true).map(image => console.log(image.listingImages.dataValues.primary)));
-      return listing.getImages().then(images => images.filter(image => image.listingImages.dataValues.primary == true)).then(images => images[0]);
+      return listing.getImages()
+      .then(images => {
+        if (images) {
+          console.log("IMAGES: ", images)
+          images.filter(image => image.listingImages.dataValues.primary == true)).then(images => images[0]);
+        }
+      })
     },
     secondaryImages(listing) {
       return listing.getImages().then(images => images.filter(image => image.listingImages.dataValues.primary == false));
