@@ -984,12 +984,12 @@ const resolvers = {
             if (images && images.length > 0) {
               addListingsPromise  = listing.addImages(images)
             }
-            let categoryPromise = Category.findOne({ where: { id: args.category } })
+            let categoryPromise = Category.findOne({ where: { id: args.categoryId } })
             .then( cat => {
               if (cat) {
                 return cat.addListing( listing )
               }
-              return Promise.reject(new Error("Category not found. CategoryCode: " + args.category))
+              return Promise.reject(new Error("Category not found. CategoryCode: " + args.categoryId))
             })
             let userPromise = User.findOne({ where: { id: context.userid }})
             .then( user => {
@@ -998,11 +998,11 @@ const resolvers = {
               }
               return Promise.reject(new Error("User not found. UserId: " + context.userid))
             })
-            let templatePromise = listing.setTemplate( args.template ).catch( (e) => console.log("ERROR: Listing.setTemplate: ", e));
+            let templatePromise = listing.setTemplate( args.templateId ).catch( (e) => console.log("ERROR: Listing.setTemplate: ", e));
             let salemodePromise = listing.setSaleMode( mode ).catch( (e) => console.log("ERROR: Listing.setSaleMode: ", e));
             let tagPromises = []
-            if (args.tags && args.tags.length > 0) {
-              tagPromises = args.tags.map( tagId => Tag.findOne({ where: {id: tagId} }).catch( (e) => { console.log("Error: " + e); return Promise.reject(new Error("User Error: listing: tagId")) }))
+            if (args.tagIds && args.tagIds.length > 0) {
+              tagPromises = args.tagIds.map( tagId => Tag.findOne({ where: {id: tagId} }).catch( (e) => { console.log("Error: " + e); return Promise.reject(new Error("User Error: listing: tagId")) }))
             }
             return Promise.all( tagPromises )
             .then( tags => {
