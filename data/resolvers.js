@@ -989,7 +989,7 @@ const resolvers = {
               if (cat) {
                 return cat.addListing( listing )
               }
-              return Promise.reject(new Error("Category not found. CategoryCode: " + args.categoryId))
+              return Promise.reject(new Error("Category not found. CategoryId: " + args.categoryId))
             })
             let userPromise = User.findOne({ where: { id: context.userid }})
             .then( user => {
@@ -1019,7 +1019,7 @@ const resolvers = {
   //                  return Promise.reject(e)
   //                })
                   .then( () => {
-                    return listing
+                    return listing.reload()
                   })
                 })
   //              .catch( e => {

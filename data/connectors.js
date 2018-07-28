@@ -164,7 +164,7 @@ const CurrencyModel = db.define('currency', {
 const CategoryModel = db.define('category', {
   name: { type: Sequelize.STRING },
 });
-const ContentModel = db.define('Content', {
+const ContentModel = db.define('content', {
   meaning: { type: Sequelize.STRING },
   countryIsoCode: { type: Sequelize.STRING, unique: 'contentCountry' },
   locusId: { type: Sequelize.INTEGER, unique: 'contentCountry' },
@@ -369,7 +369,7 @@ db.sync({ force: true }).then(() => {
     .then( newLocus => {
       if (locus.parentName) {
         if (locus.grandParentName) {
-          findOne({ name: locus.grandParentName })
+          LocusModel.findOne({ name: locus.grandParentName })
           .then( grand => {
             grand.getChildren({name: locus.parentName})
             .then( parentLocus => {
@@ -378,14 +378,15 @@ db.sync({ force: true }).then(() => {
             })
           })
         } else {
-          findOne({ name: locus.parentName, parentId: null })
+          LocusModel.findOne({ name: locus.parentName, parentId: null })
           .then( parentLocus => {
             newLocus.setParent( parentLocus )
             return null
           })
         }
+      } else {
+        // Root Locus
       }
-
     })
   })
   let tagOnePromise = TagModel.create({ name: "myTag0" });

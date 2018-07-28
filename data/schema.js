@@ -127,10 +127,6 @@ type Mutation {
     lastMessageId: Int = 0
   ): [ChatMessage]
 
-  createLocus(
-    parentId: Int!
-
-  ): Locus
   addCountry(
     isoCode: String!
     name: String!
@@ -242,8 +238,6 @@ type Mutation {
   disableTemplate(
     id: Int!
   ): Category
-
-  
 
   # SUPER Only [Returns contentAnchorId]
   createLocus(
