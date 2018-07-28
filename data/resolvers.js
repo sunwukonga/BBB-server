@@ -720,7 +720,6 @@ const resolvers = {
                     })
                     return user
                   })
-                  //throw new Error("Email created, but user already existed! Possible duplicate facebook name. Try a different login provider.");
                 }
                 console.log("User created");
                 user.addEmail(email).then( () => {
@@ -782,7 +781,6 @@ const resolvers = {
         submittedMode.counterOffer = (args.counterOffer ? true : false)
       return SaleMode.create( submittedMode )
       .then( mode => {
-        //let currencyPromise = Currency.findOne({ where: { iso4217: args.currency }})
         let currencyPromise = Currency.findOne({ where: { iso4217: args.currency }})
         .then( currency => {
           return mode.setCurrency( currency ).catch( (e) => console.log("ERROR: Mode.setCurrency: ", e));
@@ -821,44 +819,19 @@ const resolvers = {
                           })
                         );
                         return Promise.all( tagPromises )
-//                        .catch( e => {
-//                          console.log("______###### setTags on barterOptionTemplate has a problem." + e);
-//                          return Promise.reject(e)
-//                        })
                         .then( tags => {
                           return barterOptionTemplate.setTags( tags )
                           .then( () => tagPromises)
                         })
                       }
                     })
-//                    .catch( e => {
-//                      console.log("______###### Catching 2nd level out" + e);
-//                      return Promise.reject(e)
-//                    })
                   })
-//                  .catch( e => {
-//                    console.log("______###### Catching 3rd level out" + e);
-//                    return Promise.reject(e)
-//                  })
                 }) // End map
                 return Promise.all( barterOptionPromises )
-//                .catch( e => {
-//                  console.log("_____##### Catching 4th Level out: " + e)
-//                  return Promise.reject(e)
-//                })
                 .then( () => barterOption )
               })
-//              .catch( e => {
-//                console.log("_____##### Catching 5th Level out: " + e)
-//                return Promise.reject(e)
-//              })
             }); // End Map
-            // Here's the problem: We're returning when we should wait.
             let barterReturnPromise = Promise.all( barterPromises )
-//            .catch( e => {
-//              console.log("_____##### Catching 6th Level out: " + e)
-//              return Promise.reject(e)
-//            })
             .then( barterOptions => {
               return mode.addBarterOptions( barterOptions )
               .catch( e => {
@@ -945,11 +918,12 @@ const resolvers = {
           });
         }
 
-        let imagePromises = []
+        let imagePromises
         if (args.images) {
-          let imagePromises = args.images.map( inputImage => {
+          imagePromises = args.images.map( inputImage => {
             if (inputImage.deleted) {
-              return destroyS3andInstanceByImageId( inputImage.imageId )
+              destroyS3andInstanceByImageId( inputImage.imageId )
+              return null
             } else {
               return Image.findOne({where: {id: inputImage.imageId}})
               .then( image => {
@@ -963,7 +937,7 @@ const resolvers = {
                 }
               });
             }
-          }).filter( image => image );
+          }).filter( promise => promise );
         }
 
         return Promise.all(imagePromises)
@@ -1009,56 +983,19 @@ const resolvers = {
               if (tags) {
                 return listing.setTags( tags )
                 .catch( e => {
-                  console.log("_____##### Error setting tags on listing: " + e)
                   return Promise.reject(new Error("User Error: listing: tags"))
                 })
                 .then( () => {
                   return Promise.all( [countryPromise, categoryPromise, addListingsPromise, userPromise, templatePromise, salemodePromise].concat( promiseCollection ) )
-  //                .catch( e => {
-  //                  console.log("_____##### Catching 7th Level out: " + e)
-  //                  return Promise.reject(e)
-  //                })
                   .then( () => {
                     return listing.reload()
                   })
                 })
-  //              .catch( e => {
-  //                console.log("_____##### Catching 8th Level out: " + e)
-  //                return Promise.reject(e)
-  //              })
               }
             })
-//            .catch( e => {
-//              console.log("_____##### Catching 9th Level out: " + e)
-//              return Promise.reject(e)
-//            })
           })
-//            .catch( e => {
-//              console.log("_____##### Catching 11th Level out: " + e)
-//              return Promise.reject(e)
-//            })
         })
-//            .catch( e => {
-//              console.log("_____##### Catching 12th Level out: " + e)
-//              return Promise.reject(e)
-//            })
       })
-//            .catch( e => {
-//              console.log("_____##### Catching 13th Level out: " + e)
-//             return Promise.reject(e)
-//           })
-      // Add images, deleting where necessary.
-      //   createListing: context.userid, title, description, category
-      //   addTemplate: template, tags
-      //   createMode: mode{
-      //     SALE: currency, cost, counterOffer
-      //     BARTER: barterTemplates
-      //     SALEBARTER: currency, cost, counterOffer, barterTemplates
-      //     DONATE:
-      //     }
-      //   createDelivery: method{ftf, post}, address, cost, currency
-      //   map over images, if discarded: delete S3 record and image ref in database, 
-      //                            else: update Image with URL
     },
     addTemplate(_, args, context) {
 
@@ -1383,7 +1320,6 @@ const resolvers = {
       return listing.getImages()
       .then(images => {
         if (images) {
-          console.log("IMAGES: ", images)
           let result = images.filter(image => image.listingImages.dataValues.primary == true)
           return result[0]
         } else {
