@@ -1,107 +1,142 @@
-const loci = {
-    App:                    { name: 'App'
-                            , parentName: 'App'
-                            }
-  , CategoryScreen:         { name: 'CategoryScreen'
-                            , parentName: 'App'
-                            }
-  , ChatScreen:             { name: 'ChatScreen'
-                            , parentName: 'App'
-                            }
-  , DrawerContainer:        { name: 'DrawerContainer'
-                            , parentName: 'App'
-                            }
-  , HomeScreen:             { name: 'HomeScreen'
-                            , parentName: 'App'
-                            }
-  , ProductDetailsScreen:   { name: 'ProductDetailsScreen'
-                            , parentName: 'App'
-                            }
-  , SettingScreen:          { name: 'SettingScreen'
-                            , parentName: 'App'
-                            }
-  , ChatDetailScreen:       { name: 'ChatDetailScreen'
-                            , parentName: 'App'
-                            }
-  , CountryScreen:          { name: 'CountryScreen'
-                            , parentName: 'App'
-                            }
-  , FavoriteScreen:         { name: 'FavoriteScreen'
-                            , parentName: 'App'
-                            }
-  , LoginScreen:            { name: 'LoginScreen'
-                            , parentName: 'App'
-                            }
-  , ProfileScreen:          { name: 'ProfileScreen'
-                            , parentName: 'App'
-                            }
-  , StrollersScreen:        { name: 'StrollersScreen'
-                            , parentName: 'App'
-                            }
-  , ChatListScreen:         { name: 'ChatListScreen'
-                            , parentName: 'App'
-                            }
-  , CreateNewItemScreen:    { name: 'CreateNewItemScreen'
-                            , parentName: 'App'
-                            }
-  , FilterScreen:           { name: 'FilterScreen'
-                            , parentName: 'App'
-                            }
-  , NotificationScreen:     { name: 'NotificationScreen'
-                            , parentName: 'App'
-                            }
-  , SearchResultScreen:     { name: 'SearchResultScreen'
-                            , parentName: 'App'
-                            }
-  , SupportScreen:          { name: 'SupportScreen'
-                            , parentName: 'App'
-                            }
-  , Countries:              { name: 'Countries'
-                            , parentName: 'App'
-                            }
-  , Categories:             { name: 'Categories'
-                            , parentName: 'App'
-                            }
-  , Title0:                 { name: 'Title'
-                            , parentName: 'HomeScreen'
-                            }
-  , SearchSuggestion:       { name: 'SearchSuggestion'
-                            , parentName: 'HomeScreen'
-                            }
-  , MostLiked:              { name: 'MostLiked'
-                            , parentName: 'HomeScreen'
-                            }
-  , MostRecent:             { name: 'MostRecent'
-                            , parentName: 'HomeScreen'
-                            }
-  , MostVisited:            { name: 'MostVisited'
-                            , parentName: 'HomeScreen'
-                            }
-  , UserMostVisited:        { name: 'UserMostVisited'
-                            , parentName: 'HomeScreen'
-                            }
-  , UserMostLiked:          { name: 'UserMostLiked'
-                            , parentName: 'HomeScreen'
-                            }
-  , UserPosted:             { name: 'UserPosted'
-                            , parentName: 'HomeScreen'
-                            }
-  , Question:               { name: 'Question'
-                            , parentName: 'HomeScreen'
-                            }
-  , Suggestion:             { name: 'Suggestion'
-                            , parentName: 'HomeScreen'
-                            }
-  , Title1:                 { name: 'Title'
-                            , parentName: 'LoginScreen'
-                            }
-  , Connect:                { name: 'Connect'
-                            , parentName: 'LoginScreen'
-                            }
-  , Title2:                 { name: 'Title'
-                            , parentName: 'CategoryScreen'
-                            }
-}
+const loci = [
+    { name: 'App'
+    , parentName: null
+    , grandParentName: null
+    }
+  , { name: 'CategoryScreen'
+    , parentName: 'App'
+    , grandParentName: null
+    }
+  , { name: 'ChatScreen'
+    , parentName: 'App'
+    , grandParentName: null
+    }
+  , { name: 'DrawerContainer'
+    , parentName: 'App'
+    , grandParentName: null
+    }
+  , { name: 'HomeScreen'
+    , parentName: 'App'
+    , grandParentName: null
+    }
+  , { name: 'ProductDetailsScreen'
+    , parentName: 'App'
+    , grandParentName: null
+    }
+  , { name: 'SettingScreen'
+    , parentName: 'App'
+    , grandParentName: null
+    }
+  , { name: 'ChatDetailScreen'
+    , parentName: 'App'
+    , grandParentName: null
+    }
+  , { name: 'CountryScreen'
+    , parentName: 'App'
+    , grandParentName: null
+    }
+  , { name: 'FavoriteScreen'
+    , parentName: 'App'
+    , grandParentName: null
+    }
+  , { name: 'LoginScreen'
+    , parentName: 'App'
+    , grandParentName: null
+    }
+  , { name: 'ProfileScreen'
+    , parentName: 'App'
+    , grandParentName: null
+    }
+  , { name: 'StrollersScreen'
+    , parentName: 'App'
+    , grandParentName: null
+    }
+  , { name: 'ChatListScreen'
+    , parentName: 'App'
+    , grandParentName: null
+    }
+  , { name: 'CreateNewItemScreen'
+    , parentName: 'App'
+    , grandParentName: null
+    }
+  , { name: 'FilterScreen'
+    , parentName: 'App'
+    , grandParentName: null
+    }
+  , { name: 'NotificationScreen'
+    , parentName: 'App'
+    , grandParentName: null
+    }
+  , { name: 'SearchResultScreen'
+    , parentName: 'App'
+    , grandParentName: null
+    }
+  , { name: 'SupportScreen'
+    , parentName: 'App'
+    , grandParentName: null
+    }
+  , { name: 'Countries'
+    , parentName: 'App'
+    , grandParentName: null
+    }
+  , { name: 'Categories'
+    , parentName: 'App'
+    , grandParentName: null
+    }
+  , { name: 'Title'
+    , parentName: 'HomeScreen'
+    , grandParentName: 'App'
+    }
+  , { name: 'SearchSuggestion'
+    , parentName: 'HomeScreen'
+    , grandParentName: 'App'
+    }
+  , { name: 'MostLiked'
+    , parentName: 'HomeScreen'
+    , grandParentName: 'App'
+    }
+  , { name: 'MostRecent'
+    , parentName: 'HomeScreen'
+    , grandParentName: 'App'
+    }
+  , { name: 'MostVisited'
+    , parentName: 'HomeScreen'
+    , grandParentName: 'App'
+    }
+  , { name: 'UserMostVisited'
+    , parentName: 'HomeScreen'
+    , grandParentName: 'App'
+    }
+  , { name: 'UserMostLiked'
+    , parentName: 'HomeScreen'
+    , grandParentName: 'App'
+    }
+  , { name: 'UserPosted'
+    , parentName: 'HomeScreen'
+    , grandParentName: 'App'
+    }
+  , { name: 'Question'
+    , parentName: 'HomeScreen'
+    , grandParentName: 'App'
+    }
+  , { name: 'Suggestion'
+    , parentName: 'HomeScreen'
+    , grandParentName: 'App'
+    }
+  , { name: 'Title'
+    , parentName: 'LoginScreen'
+    , grandParentName: 'App'
+    }
+  , { name: 'Connect'
+    , parentName: 'LoginScreen'
+    , grandParentName: 'App'
+    }
+  , { name: 'Title'
+    , parentName: 'CategoryScreen'
+    , grandParentName: 'App'
+    }
+]
+
 
 const contentValues = [
     { meaning: "Do you have something to sell or give away?"
@@ -116,7 +151,7 @@ const contentValues = [
         }
       , { iso639_2: 'msa'
         , translatorId: 1
-        , text: "Anda ada barang untuk dijual atau diberi"?
+        , text: "Anda ada barang untuk dijual atau diberi?"
         }
       ]
     }
@@ -139,6 +174,6 @@ const contentValues = [
 ]
 
 export {
-  , loci
+    loci
   , contentValues
 }

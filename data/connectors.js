@@ -6,6 +6,7 @@ import fetch from 'node-fetch';
 import CryptoJS from 'crypto-js';
 import AWS from 'aws-sdk';
 import Categories from './constants/categories.js';
+import {loci, contentValues} from './constants/loci.js';
 
 const BBB_BUCKET = 'bbb-app-images';
 const FortuneCookie = {
@@ -363,6 +364,30 @@ const OnlineSchema = Mongoose.Schema({
 // create mock data with a seed, so we always get the same
 casual.seed(123);
 db.sync({ force: true }).then(() => {
+  loci.map( locus => {
+    LocusModel.create({ name: locus.name })
+    .then( newLocus => {
+      if (locus.parentName) {
+        if (locus.grandParentName) {
+          findOne({ name: locus.grandParentName })
+          .then( grand => {
+            grand.getChildren({name: locus.parentName})
+            .then( parentLocus => {
+              newLocus.setParent(parentLocus)
+              return null
+            })
+          })
+        } else {
+          findOne({ name: locus.parentName, parentId: null })
+          .then( parentLocus => {
+            newLocus.setParent( parentLocus )
+            return null
+          })
+        }
+      }
+
+    })
+  })
   let tagOnePromise = TagModel.create({ name: "myTag0" });
   let tagTwoPromise = TagModel.create({ name: "myTag1" });
  // let categories = Object.assign({}, Categories)

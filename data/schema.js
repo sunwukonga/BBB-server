@@ -527,7 +527,7 @@ type Listing {
   secondaryImages: [Image]
   saleMode: SaleMode
   template: Template
-  categoryId: Category
+  categoryId: Int
   tags: [Tag]
   viewers: Int
   likes: Int
