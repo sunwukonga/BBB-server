@@ -105,9 +105,11 @@ const UserModel = db.define('user', {
   firstName: { type: Sequelize.STRING },
   lastName: { type: Sequelize.STRING },
   profileName: { type: Sequelize.STRING },
-  idVerification: { type: Sequelize.TINYINT },
-  sellerRating: { type: Sequelize.TINYINT },
-  sellerRatingCount: { type: Sequelize.INTEGER },
+  idVerification: { type: Sequelize.TINYINT , defaultValue: 1 },
+  sellerRating: { type: Sequelize.TINYINT, defaultValue: 0 },
+  sellerRatingCount: { type: Sequelize.INTEGER, defaultValue: 0 },
+  translatorWeight: { type: Sequelize.INTEGER, defaultValue: 1 },
+  ratingWeight: { type: Sequelize.INTEGER, defaultValue: 1 },
   token: { type: Sequelize.STRING },
 });
 
@@ -167,10 +169,12 @@ const CategoryModel = db.define('category', {
 const ContentModel = db.define('content', {
   meaning: { type: Sequelize.STRING },
   countryIsoCode: { type: Sequelize.STRING, unique: 'contentCountry' },
+  // locuId seems to be the name sequelize is using.
   locusId: { type: Sequelize.INTEGER, unique: 'contentCountry' },
 });
 const TranslationModel = db.define('translation', {
   text: { type: Sequelize.STRING },
+  aggRating: { type: Sequelize.INTEGER },
 });
 const LocusModel = db.define('locus', {
   //name: { type: Sequelize.STRING, primaryKey: true },
@@ -265,7 +269,7 @@ UserModel.belongsToMany(CountryModel, {as: 'Country', through: 'countryUsers'})
 UserModel.hasMany(EmailModel);
 UserModel.hasMany(OauthModel);
 UserModel.belongsTo(ImageModel, {as: 'profileImage'});
-UserModel.belongsTo(CountryModel, {as: 'adminCountry'})
+UserModel.belongsTo(CountryModel, {foreignKey: 'adminCountryCode', targetKey: 'isoCode'})
 UserModel.belongsToMany(LanguageModel, {as: 'language', through: 'userLanguage'})
 // Listing Model
 UserModel.hasMany(ListingModel); //UserModel has setListingModel method; ListingModel has a userId foreign key
@@ -317,15 +321,15 @@ ChatMessageModel.belongsTo(UserModel, {as: 'author'});
 // ------
 // I18n
 // ------
-LocusModel.hasMany(LocusModel, {as: 'Children'})
-LocusModel.belongsTo(LocusModel, {as: 'parent'})
-LocusModel.hasMany(ContentModel)
-ContentModel.belongsTo(LocusModel)
+LocusModel.hasMany(LocusModel, {as: 'Children', foreignKey: 'id', targetKey: 'parentId' })
+LocusModel.belongsTo(LocusModel, {as: 'parent', foreignKey: 'parentId', targetKey: 'id'})
+LocusModel.hasMany(ContentModel, {as: 'content', foreignKey: 'locusId', targetKey: 'id'})
+ContentModel.belongsTo(LocusModel, {as: 'locus', foreignKey: 'locusId', targetKey: 'id'})
 ContentModel.belongsTo(CountryModel)
 ContentModel.hasMany(RatingModel, {as: 'Rating', foreignKey: 'contentId'})
 ContentModel.belongsTo(UserModel, {as: 'author'})
-ContentModel.hasMany(ContentModel, {as: 'OtherContent', foreignKey: 'masterContentId'})
-ContentModel.belongsTo(ContentModel, {as: 'masterContent'})
+//ContentModel.hasMany(ContentModel, {as: 'OtherContent', foreignKey: 'masterContentId'})
+//ContentModel.belongsTo(ContentModel, {as: 'masterContent'})
 
 RatingModel.belongsTo(ContentModel, {as: 'content'})
 RatingModel.belongsTo(UserModel, {as: 'reviewer'})
@@ -793,6 +797,10 @@ const BarterOptionTemplates = db.models.barterOptionTemplates;
 const ListingViews = db.models.listingViews;
 const Currency = db.models.currency;
 const Location = db.models.location;
+const Locus = db.models.locus;
+const Translation = db.models.translation;
+const Content = db.models.content;
+const Rating = db.models.rating;
 const Image = db.models.image;
 const Oauth = db.models.oauth;
 const Email = db.models.email;
@@ -817,6 +825,10 @@ export {
  , ListingViews
  , Currency
  , Location
+ , Locus
+ , Content
+ , Translation
+ , Rating
  , Image
  , FortuneCookie
  , Facebook

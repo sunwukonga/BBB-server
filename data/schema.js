@@ -43,7 +43,17 @@ type Query {
   getUserVisitedListings(countryCode: String!, limit: Int = 20, page: Int = 1): [Listing]
   getUserLikedListings(countryCode: String!, limit: Int = 20, page: Int = 1): [Listing]
   getUserPostedListings(countryCode: String!, limit: Int = 20, page: Int = 1): [Listing]
-  
+
+  # For SUPER + ADMIN returns most highly rated
+  # For other roles, returns most highly rated, unless content has been added by calling user.
+  getContent(
+    locusId: Int!
+    countryCode: String!
+    languageCodes: [String]!
+    cascade: Boolean = true
+    preferMyContent: Boolean
+  ): [Locus]
+
 
 }
 
@@ -272,15 +282,6 @@ type Mutation {
     contentId: Int
   ): Boolean
 
-  # For SUPER + ADMIN returns most highly rated
-  # For other roles, returns most highly rated, unless content has been added by calling user.
-  getContent(
-    locusId: Int!
-    countryCode: String!
-    languageCodes: [String]!
-    preferMyContent: Boolean = true
-  ): [Locus]
-
   createTranslation(
     text: String!
     contentId: Int!
@@ -309,19 +310,19 @@ type Mutation {
   ): Rating
 
   unrateRating(
-    ratingId: Int! 
+    ratingId: Int!
   ): Boolean
- 
+
   rateTranslation(
     translationId: Int!
     good: Boolean!
-    comment: String
+    comment: String = ""
   ): Rating
 
   unrateTranslation(
     ratingId: Int!
   ): Boolean
- 
+
   # Deletion will only succeed if it is NOT the current default.
   deleteTranslation(
     translationId: Int!

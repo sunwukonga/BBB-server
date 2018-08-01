@@ -24,6 +24,10 @@ import {
   , ListingViews
   , Currency
   , Location
+  , Locus
+  , Content
+  , Translation
+  , Rating
   , Image
   , FortuneCookie
   , Facebook
@@ -96,7 +100,20 @@ const resolvers = {
       return Listing.find({ where: { id: args.id}})
         .catch( e => Promise.reject(new Error("Possible User Error: check id. Error: " + e.message)))
     },
+/*
+  # For SUPER + ADMIN returns most highly rated
+  # For other roles, returns most highly rated, unless content has been added by calling user.
+  getContent(
+    locusId: Int!
+    countryCode: String!
+    languageCodes: [String]!
+    preferMyContent: Boolean = true
+  ): [Locus]
+  */
 
+    getContent(_, args, context) {
+      return Locus.findById( args.locusId )
+    },
     getMostRecentListings(_, args, context) {
       return Listing.findAll({
         where: {
@@ -1056,6 +1073,92 @@ const resolvers = {
         }
       })
     },
+    rateTranslation(_, args, context) {
+      if (context.userid !== "") {
+        return User.findById( context.userid )
+        .then( user => {
+          return Rating.findOrCreate({
+              where: { reviewerId: context.userid
+                     , translationId: args.translationId
+                     }
+            , defaults: {
+                  good: args.good
+                , weight: user.translatorWeight
+                , comment: args.comment
+            }
+          })
+          .then( (rating, created) => {
+            if (!created) {
+              rating.good = args.good
+              rating.weight = user.translatorWeight
+              rating.comment = args.comment
+              return rating.save()
+            }
+            return rating
+          })
+        })
+      }
+    },
+    unrateTranslation(_, args, context) {
+      // Delete rating and all subsequent ratings
+      return Rating.findById( args.ratingId )
+      .then( rating => {
+        let rollingRatingDelete = childrenPromise => {
+          Promise.all([childrenPromise])
+          .then( children => {
+            children.map( child => {
+              rollingRatingDelete( child.getComments )
+              child.destroy()
+            })
+          })
+        }
+        if (rating) {
+          if (context.roles.includes(Roles.Super)) {
+            rollingRatingDelete([rating])
+            return true
+          }
+          if (context.roles.includes(Roles.Admin)) {
+            // Delete anything in Admin's country return true
+            // Follow chain of ratings up to contentId (maybe through translationId) and then check country
+            let climbToCountry = instancePromise => {
+              return Promise.all([instancePromise])
+              .then( instance => {
+                //TODO check locuId
+                if (instance.locusId) {
+                  //This is an instance of Content, get the country and check against AdminCountry
+                  if (context.countryCode == instance.countryCode) {
+                    rollingRatingDelete([rating])
+                    return true
+                  }
+                  return false
+                }
+                if (instance.contentId) {
+                  // return call recursively on Content instance from contentId
+                  return climbToCountry( Content.findById( instance.contentId ))
+                }
+                if (instance.translationId) {
+                  // return call recursively on Tranlation instance from translationId
+                  return climbToCountry( Translation.findById( instance.translationId ))
+                }
+                if (instance.parentId) {
+                  // return call recursively on Rating instance from parentId
+                  return climbToCountry( Rating.findById( instance.translationId ))
+                }
+                return Promise.reject( new Error("This ADMIN does not have the authority to remove ratings in this country."))
+              })
+            }
+            return climbToCountry( [rating] )
+          }
+          if (rating.reviewerId == context.userid) {
+            // Delete rating because it belongs to user return true
+            rollingRatingDelete([rating])
+            return true
+          }
+        } else {
+          return Promise.reject( new Error("This rating does not exist!"))
+        }
+      })
+    },
     createChat(_, args, context) {
       return Chat.find({
         where: {
@@ -1272,7 +1375,13 @@ const resolvers = {
     },
     online(user) {
       // OnlineStatus is Mongoose, not sqlite
-      return OnlineStatus.findOne({ userId: user.id }).then(is => is.online);
+      return OnlineStatus.findOne({ userId: user.id }).then(is => {
+        if (is) {
+          return is.online
+        } else {
+          return false
+        }
+      })
     },
     country(user) {
       return Country.findOne({ where: { isoCode: user.country }});
@@ -1415,7 +1524,70 @@ const resolvers = {
       return template.getTags();
     }
   },
+  Locus: {
+    children(locus, args, context) {
+      if (args.cascade) {
+        return locus.getChildren()
+      }
+    },
+    content(locus, args, content) {
+      //WHATROLEAMI
+      if (context.roles.includes(Roles.Super) || context.roles.includes(Roles.Admin)) {
+        // Never return personal content in the stead of popular content
+        // Unless args.preferMyContent == true
+        if (args.preferMyContent && args.preferMyContent == true) {
 
+        } else {
+          locus.getContent({
+            include: [
+              {
+                  model: Country
+                , where: { countryCode: { [Op.in]: [ args.countryCode, null ] }}
+                , required: true
+              },
+              {
+                  model: Translation
+                , where: { iso639_2: { [Op.in]: args.languageCodes }}
+                , attributes: [
+                    [Sequelize.fn('MAX', Sequelize.col('aggRating')), 'highest']
+                  ]
+                , through: {
+                    group: ['country.countryCode'],
+                  }
+
+                /*
+                , include: [
+                    {
+                        model: Translation
+                      , attributes: [
+                          [Sequelize.fn('MAX', Sequelize.col('aggRating')), 'highest']
+                        ],
+                      , through: {
+                          group: ['country.countryCode'],
+                        }
+                      , required: true
+                    }
+                  ]
+                  */
+                , required: true
+              }
+            ]
+          })
+        }
+      }
+    },
+
+  },
+  /*
+    countryCode: String!
+    languageCodes: [String]!
+    cascade: Boolean = true
+    preferMyContent: Boolean
+    */
+/*
+  children: [Locus]
+  content: [Content]
+  */
 };
 
 const destroyS3andInstanceByImageId = (imageId) => {
