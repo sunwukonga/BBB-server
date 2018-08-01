@@ -1415,6 +1415,16 @@ const resolvers = {
     liked(listing, _, context) {
       return listing.hasLike(context.userid)
     },
+    chatId(listing, _, context) {
+      return Chat.find({ where: {
+          initUserId: context.userid,
+          recUserId: listing.userId,
+          listingId: listing.id
+        }
+      })
+      .then( chat => chat ? chatId : null )
+    },
+    /*
     chatExists(listing, _, context) {
       return Chat.find({ where: {
           initUserId: context.userid,
@@ -1423,7 +1433,7 @@ const resolvers = {
         }
       })
       .then( chat => chat ? true : false )
-    },
+    }, */
     primaryImage(listing) {
 //      listing.getImage().then(images => images.filter(image => image.listingImages.dataValues.primary == true).map(image => console.log(image.listingImages.dataValues.primary)));
       return listing.getImages()

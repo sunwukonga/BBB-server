@@ -527,7 +527,7 @@ type Listing {
   viewers: Int
   likes: Int
   liked: Boolean
-  chatExists: Boolean
+  chatId: Int
   user: User
 }
 

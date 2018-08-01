@@ -368,29 +368,25 @@ const OnlineSchema = Mongoose.Schema({
 // create mock data with a seed, so we always get the same
 casual.seed(123);
 db.sync({ force: true }).then(() => {
-  loci.map( locus => {
-    LocusModel.create({ name: locus.name })
-    .then( newLocus => {
+  let lociPromises = loci.map( locus => LocusModel.create({ name: locus.name }) )
+  Promise.all( lociPromises )
+  .then( newLoci => {
+    let index = 0
+    loci.map( locus => {
+      let filteredParentLoci
       if (locus.parentName) {
+        let parentLoci = newLoci.filter( locusModel => locusModel.parentName == locus.parentName)
         if (locus.grandParentName) {
-          LocusModel.findOne({ name: locus.grandParentName })
-          .then( grand => {
-            grand.getChildren({name: locus.parentName})
-            .then( parentLocus => {
-              newLocus.setParent(parentLocus)
-              return null
-            })
-          })
+          filteredParentLoci = parentLoci.filter( locusModel => locusModel.parentName = locus.grandParentName )
+          newLoci[index].setParent( filteredParentLoci[0] )
         } else {
-          LocusModel.findOne({ name: locus.parentName, parentId: null })
-          .then( parentLocus => {
-            newLocus.setParent( parentLocus )
-            return null
-          })
+          filteredParentLoci = parentLoci.filter( locusModel => locusModel.parentName == null )
+          newLoci[index].setParent( filteredParentLoci[0] )
         }
       } else {
-        // Root Locus
+        // root element
       }
+      index++
     })
   })
   let tagOnePromise = TagModel.create({ name: "myTag0" });
