@@ -1422,7 +1422,7 @@ const resolvers = {
           listingId: listing.id
         }
       })
-      .then( chat => chat ? chatId : null )
+      .then( chat => chat ? chat.id : null )
     },
     /*
     chatExists(listing, _, context) {
