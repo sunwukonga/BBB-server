@@ -206,7 +206,7 @@ const OauthModel = db.define('oauth', {
   uid: { type: Sequelize.STRING, allowNull: false },
   name: { type: Sequelize.STRING },
   email: { type: Sequelize.STRING },
-  picture: { type: Sequelize.STRING },
+  pictureUrl: { type: Sequelize.STRING },
 });
 
 const BarterOptionModel = db.define('barterOption', {

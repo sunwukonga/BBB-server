@@ -1393,7 +1393,19 @@ const resolvers = {
       return Country.findOne({ where: { isoCode: user.country }});
     },
     profileImage(user) {
-      return user.getProfileImage();
+      return user.getProfileImage()
+      .then( profileImage => {
+        if (!profileImage) {
+          return user.getOauth()
+          .then( oauth => {
+            return {
+              imageUrl: oauth.pictureUrl
+            }
+          })
+        } else {
+          return profileImage
+        }
+      })
     },
   },
   Listing: {
