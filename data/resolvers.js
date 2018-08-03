@@ -1396,10 +1396,10 @@ const resolvers = {
       return user.getProfileImage()
       .then( profileImage => {
         if (!profileImage) {
-          return user.getOauth()
-          .then( oauth => {
+          return user.getOauths()
+          .then( oauths => {
             return {
-              imageUrl: oauth.pictureUrl
+              imageUrl: oauths[0].pictureUrl
             }
           })
         } else {
