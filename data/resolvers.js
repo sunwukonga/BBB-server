@@ -1399,7 +1399,7 @@ const resolvers = {
           return user.getOauths()
           .then( oauths => {
             return {
-              imageUrl: oauths[0].pictureUrl
+              imageURL: oauths[0].pictureUrl
             }
           })
         } else {
