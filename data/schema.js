@@ -70,7 +70,7 @@ type Mutation {
   loginFacebook(
     token: String!
     countryCode: String
-  ): String
+  ): LogStatus
 
   getSignedUrl(
     imageType: String!
@@ -556,7 +556,8 @@ type Currency {
 }
 
 type LogStatus {
-  result: String
+  token: String
+  user: User
 }
 
 type SignedUrl {

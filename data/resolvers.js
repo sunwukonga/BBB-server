@@ -764,7 +764,10 @@ const resolvers = {
                   }
                 ]
             }
-            return jwt.sign( JSON.stringify(userToken), process.env.JWT_SECRET_KEY );
+            return {
+              token: jwt.sign( JSON.stringify(userToken), process.env.JWT_SECRET_KEY )
+            , userid: user.id
+            }
           })
         } else {
           let userToken = {
@@ -775,7 +778,10 @@ const resolvers = {
                 }
               ]
           }
-          return jwt.sign( JSON.stringify(userToken), process.env.JWT_SECRET_KEY );
+          return {
+            token: jwt.sign( JSON.stringify(userToken), process.env.JWT_SECRET_KEY )
+          , userid: oauth.userId
+          }
         }
       })
     },
@@ -1532,6 +1538,11 @@ const resolvers = {
   Template: {
     tags(template) {
       return template.getTags();
+    }
+  },
+  LogStatus: {
+    user( logStatus ) {
+      return User.findById( logStatus.userid )
     }
   },
   Locus: {
