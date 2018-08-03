@@ -688,7 +688,7 @@ const resolvers = {
                 provider: Providers.Facebook
               , name: res.name
               , email: res.email
-              , picture: res.picture.data.url
+              , pictureURL: res.picture.data.url
             }
         })
       })
@@ -1399,7 +1399,7 @@ const resolvers = {
           return user.getOauths()
           .then( oauths => {
             return {
-              imageURL: oauths[0].pictureUrl
+              imageURL: oauths[0].pictureURL
             }
           })
         } else {
