@@ -523,6 +523,7 @@ type Listing {
   saleMode: SaleMode
   template: Template
   categoryId: Int
+  category: Category
   tags: [Tag]
   viewers: Int
   likes: Int

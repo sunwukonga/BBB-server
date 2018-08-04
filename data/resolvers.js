@@ -1469,7 +1469,10 @@ const resolvers = {
     },
     tags(listing) {
       return listing.getTags();
-    }
+    },
+    category(listing) {
+      return listing.getCategory()
+    },
   },
   SaleMode: {
     currency(saleMode) {
