@@ -1497,9 +1497,17 @@ const resolvers = {
       });
     }
   },
+  ExchangeMode: {
+    currency(exchangeMode) {
+      return exchangeMode.getCurrency()
+    },
+    location(exchangeMode) {
+      return exchangeMode.getLocation()
+    }
+  },
   Country: {
     currencies(country) {
-      return country.getCurrency();
+      return country.getCurrency()
     },
     languages(country) {
       return country.getLanguage()
