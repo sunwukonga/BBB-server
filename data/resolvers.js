@@ -895,7 +895,7 @@ const resolvers = {
             let [exchangeMode, currency] = values;
             exchangeMode.setCurrency( currency )
             .then( () => {
-              if (args.post.price) {
+              if (args.post.postCost) {
                 exchangeMode.price = args.post.postCost;
                 exchangeMode.save()
               }
@@ -919,9 +919,9 @@ const resolvers = {
           console.log("___________________________________________")
           // Face to face
           let submittedAddress = {}
-          if (args.address.latitude && args.address.longitude) {
-            submittedAddress.latitude = args.address.latitude
-            submittedAddress.longitude = args.address.longitude
+          if (args.address.lat && args.address.long) {
+            submittedAddress.lat = args.address.lat
+            submittedAddress.long = args.address.long
           }
           if (args.address.lineOne)
             submittedAddress.lineOne = args.address.lineOne
