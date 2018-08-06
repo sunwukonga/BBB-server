@@ -251,9 +251,11 @@ const BarterOptionTemplatesModel = db.define('barterOptionTemplates', {
   quantity: { type: Sequelize.INTEGER, allowNull: false, defaultValue: 1 },
 });
 // Join table for ListingModel and User (Views)
+/*
 const CountryUsersModel = db.define('listingViews', {
   visits: { type: Sequelize.INTEGER, allowNull: false, defaultValue: 1 },
 });
+*/
 //const BarterGroupModel = db.define('barterGroup');
 
 // ****************************
@@ -764,11 +766,11 @@ db.sync({ force: true }).then(() => {
               )
             })
             .catch( e => console.log("Error: " + e))
-          });
-      });
-    });
-  });
-});
+          })
+      })
+    })
+  })
+})
 
 function* shuffle(array, excluded) {
     var i = array.length;

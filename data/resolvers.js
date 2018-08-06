@@ -214,6 +214,7 @@ const resolvers = {
     },
     getUserVisitedListings(_, args, context) {
       return Listing.findAll({
+        subQuery: false,
         include: [
           {
             model: Country,
@@ -236,6 +237,7 @@ const resolvers = {
     },
     getUserLikedListings(_, args, context) {
       return Listing.findAll({
+        subQuery: false,
         include: [
           {
             model: Country,
@@ -1066,15 +1068,14 @@ const resolvers = {
         }
         if (args.like) {
           return listing.addLike(context.userid)
-          .catch( e => Promise.reject(new Error("User Error: You cannot like a listing twice")))
+          .catch( e => Promise.reject(new Error("User Error: You cannot like a listing twice, or your userId doesn't exist.")))
           .then( () => {
             return true
           })
         } else {
           return listing.removeLike(context.userid)
           .then( () => {
-            // response always 0
-            return true
+            return false
           })
         }
       })
@@ -1419,15 +1420,21 @@ const resolvers = {
       return listing.getTemplate();
     },
     viewers(listing) {
+      /*
       if (listing.Views) {
+        console.log("TESTING______________Likes: ", listing.Views)
         return listing.Views[0].dataValues.viewers
-      }
+      }*/
       return listing.countViews()
     },
     likes(listing) {
+      // This `listing.Like` looks into the User object that is linked by listingLikes
+      // Not what we need here.
+      /*
       if (listing.Like) {
+        console.log("TESTING______________Likes: ", listing.Like)
         return listing.Like[0].dataValues.likes
-      }
+      } */
       return listing.countLike()
     },
     liked(listing, _, context) {

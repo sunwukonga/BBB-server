@@ -11,6 +11,7 @@ import schema from './data/schema';
 import compression from 'compression';
 import { Engine } from 'apollo-engine';
 import { formatError } from 'apollo-errors';
+import roles from './data/constants/roles'
 //import jwt from 'jwt-express';
 //const jwt = require('jsonwebtoken');
 import jwt from 'jsonwebtoken';
@@ -29,9 +30,9 @@ const jwtDecode = require('jwt-decode');
 //  next();
 //}
 const token = jwt.sign({
-    "userid": ""
+    "userid": "4"
   , "roles": [
-      "ADMIN"
+      roles.Bargainer
     ]
   , "countryCode": 'SG'
   }, process.env.JWT_SECRET_KEY );
