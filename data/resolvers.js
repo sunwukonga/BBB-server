@@ -677,9 +677,13 @@ const resolvers = {
     loginFacebook(_, args) {
       var names;
       var auth;
+      let startTime = new Date
+      let interTime = startTime
       return Facebook.login( args )
       .then( res => {
-        console.log(res);
+        console.log("---------------------------------------");
+        console.log("Time (ms) to request info from Facebook: ", new Date() - interTime)
+        interTime = new Date()
         names = res.name.split(' ');
         if ( (typeof res.email == "undefined") || (! /@/g.test(res.email)) ) {
           throw new Error("Oauth provider did not supply email. Login aborted.");
@@ -695,9 +699,9 @@ const resolvers = {
         })
       })
       .then( ([oauth, oauthCreated]) => {
+        console.log("Time (ms) to Oauth instance created: ", new Date() - interTime)
+        interTime = new Date()
         if (oauthCreated) {
-          console.log("Oauth record was created.");
-      auth = oauth;
           return Email.findOrCreate({
               where: { email: oauth.email }
             , defaults: {
@@ -734,16 +738,13 @@ const resolvers = {
                     }
 
                     user.addEmail(email).then( () => {
-                      console.log("Add Email and Oauth to user");
-                      user.addOauth(auth);
+                      user.addOauth(oauth);
                     })
                     return user
                   })
                 }
-                console.log("User created");
                 user.addEmail(email).then( () => {
-                  console.log("Add Email and Oauth to user");
-                  user.addOauth(auth);
+                  user.addOauth(oauth);
                 })
                 return user
               })
@@ -751,13 +752,11 @@ const resolvers = {
               // Email existed. Therefore it SHOULD be linked to an existing User. Link oauth to this user.
               return User.findOne({ where: { id: email.userId }})
               .then( user => {
-                user.addOauth(auth);
+                user.addOauth(oauth);
                 return user
               })
             }
           }).then( user => {
-            console.log("Attempting to access user to create jwt token");
-            console.log(user);
             let userToken = {
                 "userid": user.id
               , "role": [
@@ -766,6 +765,8 @@ const resolvers = {
                   }
                 ]
             }
+        console.log("Time (ms) to return: ", new Date() - interTime)
+        console.log("TOTOL Time (ms) to return: ", new Date() - startTime)
             return {
               token: jwt.sign( JSON.stringify(userToken), process.env.JWT_SECRET_KEY )
             , userid: user.id
@@ -776,10 +777,11 @@ const resolvers = {
               "userid": oauth.userId
             , "role": [
                 {
-                   "name": "GENERAL"
-                }
+                   "name": "BARGAINER" }
               ]
           }
+        console.log("Time (ms) to return: ", new Date() - interTime)
+        console.log("TOTOL Time (ms) to return: ", new Date() - startTime)
           return {
             token: jwt.sign( JSON.stringify(userToken), process.env.JWT_SECRET_KEY )
           , userid: oauth.userId
