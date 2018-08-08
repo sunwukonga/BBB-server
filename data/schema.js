@@ -115,7 +115,6 @@ type Mutation {
   ): Int
 
   createChat(
-    recUserId: Int!
     listingId: Int!
   ): Chat
 
@@ -499,8 +498,8 @@ input Filters {
 type Chat {
   id: Int
   initUser: User
-  recUser: User
   listing: Listing
+  userId: Int
   chatMessages: [ChatMessage]
   initUserAddress: String
   recUserAddress: String

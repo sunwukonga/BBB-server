@@ -264,12 +264,14 @@ const resolvers = {
     getChatMessages(_, args, context) {
       // Note: this returns chats, filtering the chat messages occurs at another step.
       return Chat.findAll({
-        where: {
-            [Op.or]: {
-              initUserId: context.userid,
-              recUserId: context.userid,
-            }
-        }
+        subQuery: false,
+        where: { initUserId: context.userid },
+        include: [
+          {
+            model: Listing,
+            where: { userId: context.userid },
+          },
+        ],
       })
       .then( chats => {
         return chats.map( chat => {
@@ -1172,8 +1174,7 @@ const resolvers = {
     createChat(_, args, context) {
       return Chat.find({
         where: {
-                 recUserId: args.recUserId
-               , initUserId: context.userid
+                 initUserId: context.userid
                , listingId: args.listingId
                }
       })
@@ -1184,33 +1185,23 @@ const resolvers = {
             let senderPromise = User.find({
               where: { id: context.userid }
             })
-            let receiverPromise = User.find({
-              where: { id: args.recUserId }
-            })
             let listingPromise = Listing.find({
               where: { id: args.listingId }
             })
-            return Promise.all([senderPromise, receiverPromise, listingPromise])
+            return Promise.all([senderPromise, listingPromise])
             .then( values => {
-              let [sender, receiver, listing] = values;
+              let [sender, listing] = values;
               if (!sender) {
                 throw new Error("Sending user not found. This is probably an Authorization header problem.");
               }
-              if (!receiver) {
-                throw new Error("Receiving user not found.");
-              }
               if (!listing) {
                 throw new Error("Listing not found.");
-              }
-              if (listing.userId != receiver.id) {
-                chat.destroy({ force: true })
-                return Promise.reject( new Error("Receiving user does not own that listing!"))
               }
               if (listing.userId == sender.id) {
                 chat.destroy({ force: true })
                 return Promise.reject( new Error("You cannot initiate a chat about your own listing!"))
               }
-              return Promise.all([chat.setInitUser(sender), chat.setRecUser(receiver), chat.setListing(listing)])
+              return Promise.all([chat.setInitUser(sender), chat.setListing(listing)])
               .then( () => chat)
             })
           })
@@ -1220,68 +1211,68 @@ const resolvers = {
       })
     },
     deleteChat(_, args, context) {
-      console.log("deleteChat has been called")
       return Chat.findById( args.chatId )
       .then( chat => {
         if (chat) {
           // chat exists
-          console.log("chat exists")
-          if ( chat.initUserId == context.userid || chat.recUserId == context.userid ) {
-            // userid authorized to delete.
-            console.log("User authorized to request delete of chat")
-            if ( chat.delRequestUserId ) {
-              // Someone has already deleted from their end
-              console.log("Someone has alread marked chat for deletion")
-              if ( chat.delRequestUserId != context.userid ) {
-                // AND it was the other user
-                // Destroy chat completely.
-                return chat.getChatmessages()
-                .then( chatMessages => {
-                  let deleteMessagePromises = chatMessages.map( chatMessage => {
-                    return chatMessage.getImage()
-                    .then( image => {
-                      if (image) {
-                        return destroyS3andInstanceByImageId( chatMessage.id )
-                      } return null
+          return Listing.findById( chat.listingId )
+          .then( listing => {
+            if ( chat.initUserId == context.userid || listing.userId == context.userid ) {
+              // userid authorized to delete.
+              if ( chat.delRequestUserId ) {
+                // Someone has already deleted from their end
+                if ( chat.delRequestUserId != context.userid ) {
+                  // AND it was the other user
+                  // Destroy chat completely.
+                  return chat.getChatmessages()
+                  .then( chatMessages => {
+                    let deleteMessagePromises = chatMessages.map( chatMessage => {
+                      return chatMessage.getImage()
+                      .then( image => {
+                        if (image) {
+                          // TODO: Could be shared image... might want to do a check.
+                          return destroyS3andInstanceByImageId( chatMessage.id )
+                        } return null
+                      })
+                      .then( () => chatMessage.destroy({force: true}))
+                      // *^^* CASCADE is set, but since we are here already...
                     })
-                    .then( () => chatMessage.destroy({force: true}))
-                    // *^^* CASCADE is set, but since we are here already...
+                    return Promise.all( deleteMessagePromises )
+                    .then( () => {
+                      return chat.destroy()
+                      .then( () => true )
+                    })
                   })
-                  return Promise.all( deleteMessagePromises )
-                  .then( () => {
-                    return chat.destroy()
+                } else {
+                  // Do nothing
+                  return Promise.reject( new Error("User has already deleted their end of this chat."))
+                }
+              }
+              else {
+                // No previous attempt to delete chat
+                console.log("Virgin attempt at deleting chat")
+                return chat.setDelRequestUser( context.userid )
+                .then( () => {
+                  return chat.getChatmessages({
+                    where: { authorId: context.userid }
+                  })
+                  .then( chatMessages => {
+                    let deleteMessagePromises = chatMessages.map( chatMessage => {
+                      return chatMessage.getImage()
+                      .then( image => {
+                        if (image) {
+                          return destroyS3andInstanceByImageId( chatMessage.id )
+                        } else return null
+                      })
+                      .then( () => chatMessage.destroy({force: true}))
+                    })
+                    return Promise.all( deleteMessagePromises )
                     .then( () => true )
                   })
                 })
-              } else {
-                // Do nothing
-                return Promise.reject( new Error("User has already deleted their end of this chat."))
               }
             }
-            else {
-              // No previous attempt to delete chat
-              console.log("Virgin attempt at deleting chat")
-              return chat.setDelRequestUser( context.userid )
-              .then( () => {
-                return chat.getChatmessages({
-                  where: { authorId: context.userid }
-                })
-                .then( chatMessages => {
-                  let deleteMessagePromises = chatMessages.map( chatMessage => {
-                    return chatMessage.getImage()
-                    .then( image => {
-                      if (image) {
-                        return destroyS3andInstanceByImageId( chatMessage.id )
-                      } else return null
-                    })
-                    .then( () => chatMessage.destroy({force: true}))
-                  })
-                  return Promise.all( deleteMessagePromises )
-                  .then( () => true )
-                })
-              })
-            }
-          }
+          })
         }
         return Promise.reject( new Error("Chat does not exist!"))
       })
@@ -1446,7 +1437,6 @@ const resolvers = {
     chatId(listing, _, context) {
       return Chat.find({ where: {
           initUserId: context.userid,
-          recUserId: listing.userId,
           listingId: listing.id
         }
       })
@@ -1533,8 +1523,8 @@ const resolvers = {
     initUser(chat) {
       return chat.getInitUser();
     },
-    recUser(chat) {
-      return chat.getRecUser();
+    userId(_, _, context) {
+      return context.userid
     },
     listing(chat) {
       return chat.getListing();
