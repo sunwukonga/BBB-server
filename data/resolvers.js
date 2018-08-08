@@ -1523,7 +1523,7 @@ const resolvers = {
     initUser(chat) {
       return chat.getInitUser();
     },
-    userId(_, _, context) {
+    userId(chat, _, context) {
       return context.userid
     },
     listing(chat) {
