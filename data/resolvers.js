@@ -265,7 +265,10 @@ const resolvers = {
       // Note: this returns chats, filtering the chat messages occurs at another step.
       return Chat.findAll({
         where: {
-          initUserId: context.userid,
+            [Op.or]: {
+              initUserId: context.userid,
+              recUserId: context.userid,
+            }
         }
       })
       .then( chats => {
