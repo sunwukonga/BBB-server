@@ -264,7 +264,6 @@ const resolvers = {
     getChatMessages(_, args, context) {
       // Note: this returns chats, filtering the chat messages occurs at another step.
       return Chat.findAll({
-        subQuery: false,
         where: { initUserId: context.userid },
         include: [
           {
