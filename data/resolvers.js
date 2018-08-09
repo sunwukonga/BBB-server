@@ -6,6 +6,8 @@ import jwt from 'jsonwebtoken';
 import Sequelize from 'sequelize';
 import AWS from 'aws-sdk';
 import { BadUserInputError } from 'apollo-server-express';
+import { GraphQLScalarType } from 'graphql';
+import { Kind } from 'graphql/language';
 import {
     User
   , Listing
@@ -43,6 +45,22 @@ const FooError = createError('FooError', {
 });
 
 const resolvers = {
+  Date: new GraphQLScalarType({
+    name: 'Date',
+    description: 'Date custom scalar type',
+    parseValue(value) {
+      return new Date(value); // value from the client
+    },
+    serialize(value) {
+      return value.getTime(); // value sent to the client
+    },
+    parseLiteral(ast) {
+      if (ast.kind === Kind.INT) {
+        return new Date(ast.value) // ast value is always in string format
+      }
+      return null;
+    },
+  }),
   Query: {
     user(_, args, context) {
       if (context.roles.includes(Roles.Super)) {
@@ -263,14 +281,22 @@ const resolvers = {
 
     getChatMessages(_, args, context) {
       // Note: this returns chats, filtering the chat messages occurs at another step.
+            //Sequelize.literal("`listing`.`userId` = " + context.userid)
       return Chat.findAll({
-        where: { initUserId: context.userid },
+        where: {
+          [Op.or]: {
+            initUserId: context.userid,
+            '$Listing.userId$': context.userid
+          },
+        },
         include: [
           {
             model: Listing,
             where: { userId: context.userid },
+            required: false
           },
         ],
+
       })
       .then( chats => {
         return chats.map( chat => {
@@ -1545,7 +1571,10 @@ const resolvers = {
   ChatMessage: {
     image(chat) {
       return chat.getImage();
-    }
+    },
+    time(chat) {
+      return chat.createdAt
+    },
   },
   BarterOption: {
     template(barterOptionTemplates) {

@@ -5,6 +5,7 @@ import resolvers from './resolvers.js';
 
 // loginFacebook will check for a user with the associated email address and facebook id. Create user if not exist, return jwt token for authentication
 const typeDefs = `
+scalar Date
 type Query {
   user(id: Int!): User
   allUsers: [User]
@@ -510,7 +511,7 @@ type ChatMessage {
   message: String
   image: Image
   authorId: Int
-  time: Int
+  time: Date
 }
 
 type Listing {
