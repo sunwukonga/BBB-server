@@ -1310,54 +1310,57 @@ const resolvers = {
         if (!chat) {
           return Promise.reject( new Error("chatId does not exist."))
         }
-        if ( chat.initUserId == context.userid || chat.recUserId == context.userid ) {
-          if (chat.delRequestUserId == context.userid) {
-            return Promise.reject(new Error("User has deleted this chat."))
-          }
-          return ChatMessage.create({
-            // TODO: Some protection from ridiculously large messages?
-            message: args.message
-          })
-          .then( chatMessage => {
-            let imageDeletePromise = Promise.resolve(true)
-            let setImagePromise = Promise.resolve(true)
-            if (args.image) {
-              if (args.image.deleted) {
-                // Only if the image doesn't exist somewhere else, delete it.
-                // I don't use args.image.exists -> it is redundant
-                imageDeletePromise = Image.findById( args.image.imageId )
-                .then( image => {
-                  return image.countChatmessage()
-                  .then( noOfImages => {
-                    if (noOfImages <= 1) {
-                      console.log( AWS.deleteObject( args.image.imageKey ) )
-                      return image.destroy()
+        return chat.getListing()
+        .then( listing => {
+          if ( chat.initUserId == context.userid || listing.userId == context.userid ) {
+            if (chat.delRequestUserId == context.userid) {
+              return Promise.reject(new Error("User has deleted this chat."))
+            }
+            return ChatMessage.create({
+              // TODO: Some protection from ridiculously large messages?
+              message: args.message
+            })
+            .then( chatMessage => {
+              let imageDeletePromise = Promise.resolve(true)
+              let setImagePromise = Promise.resolve(true)
+              if (args.image) {
+                if (args.image.deleted) {
+                  // Only if the image doesn't exist somewhere else, delete it.
+                  // I don't use args.image.exists -> it is redundant
+                  imageDeletePromise = Image.findById( args.image.imageId )
+                  .then( image => {
+                    return image.countChatmessage()
+                    .then( noOfImages => {
+                      if (noOfImages <= 1) {
+                        console.log( AWS.deleteObject( args.image.imageKey ) )
+                        return image.destroy()
+                      }
+                    })
+                  })
+                } else {
+                  setImagePromise = chatMessage.setImage( args.image.imageId )
+                }
+              }
+              let setAuthorPromise = chatMessage.setAuthor( context.userid );
+              return Promise.all([ imageDeletePromise, setImagePromise, setAuthorPromise])
+              .then( () => {
+                return chat.addChatmessage( chatMessage )
+                .then( () => {
+                  return chat.getChatmessages({
+                    where: {
+                      id: {
+                        [Op.gt]: args.lastMessageId ? args.lastMessageId : 0
+                      }
                     }
                   })
                 })
-              } else {
-                setImagePromise = chatMessage.setImage( args.image.imageId )
-              }
-            }
-            let setAuthorPromise = chatMessage.setAuthor( context.userid );
-            return Promise.all([ imageDeletePromise, setImagePromise, setAuthorPromise])
-            .then( () => {
-              return chat.addChatmessage( chatMessage )
-              .then( () => {
-                return chat.getChatmessages({
-                  where: {
-                    id: {
-                      [Op.gt]: args.lastMessageId ? args.lastMessageId : 0
-                    }
-                  }
-                })
               })
             })
-          })
-        } else {
-          // User doesn't belong in conversation
-          return Promise.reject(new Error("User not a member of chat."))
-        }
+          } else {
+            // User doesn't belong in conversation
+            return Promise.reject(new Error("User not a member of chat."))
+          }
+        })
       })
     },
     deleteChatMessage(_, args, context) {
