@@ -330,7 +330,7 @@ type Mutation {
 }
 
 type User {
-  id: Int
+  id: Int!
   firstName: String
   lastName: String
   profileName: String
@@ -369,6 +369,7 @@ input Address {
 }
 
 type Location {
+  id: Int!
   lineOne: String
   lineTwo: String
   postcode: String
@@ -378,29 +379,30 @@ type Location {
 }
 
 input Postage {
+  id: Int!
   postCurrency: String!
   postCost: Float!
 }
 
 type Image {
-  id: Int
+  id: Int!
   imageKey: String
   imageURL: String
 }
 
 type Category {
-  id: Int
+  id: Int!
   name: String
   children: [Category]
 }
 
 type Tag {
-  id: Int
+  id: Int!
   name: String!
 }
 
 type Template {
-  id: Int
+  id: Int!
   title: String!
   description: String
   primaryImage: Image
@@ -410,12 +412,14 @@ type Template {
 }
 
 type BarterOption {
+  id: Int!
   template: Template
   quantity: Int
   tags: [Tag]
 }
 
 type Locus {
+  id: Int!
   name: String!
   parentId: Int!
   children: [Locus]
@@ -423,6 +427,7 @@ type Locus {
 }
 
 type Content {
+  id: Int!
   meaning: String!
   author: User
   authorId: Int
@@ -433,6 +438,7 @@ type Content {
 }
 
 type Translation {
+  id: Int!
   text: String!
   languageId: String!
   translatorId: Int!
@@ -441,6 +447,7 @@ type Translation {
 }
 
 type Rating {
+  id: Int!
   good: Boolean!
   weight: Int!
   comment: String
@@ -497,7 +504,7 @@ input Filters {
 }
 
 type Chat {
-  id: Int
+  id: Int!
   initUser: User
   listing: Listing
   userId: Int
@@ -507,7 +514,7 @@ type Chat {
 }
 
 type ChatMessage {
-  id: Int
+  id: Int!
   message: String
   image: Image
   authorId: Int
@@ -515,7 +522,7 @@ type ChatMessage {
 }
 
 type Listing {
-  id: Int
+  id: Int!
   title: String
   description: String
   primaryImage: Image
@@ -533,6 +540,7 @@ type Listing {
 }
 
 type SaleMode {
+  id: Int!
   mode: String!
   price: Float
   counterOffer: Boolean
@@ -542,6 +550,7 @@ type SaleMode {
 }
 
 type ExchangeMode {
+  id: Int!
   mode: String!
   price: Float
   currency: Currency
