@@ -1468,7 +1468,7 @@ const resolvers = {
           listingId: listing.id
         }
       })
-      .then( chat => chat ? chat.id : null )
+      .then( chat => chat ? chat.id : 0 )
     },
     /*
     chatExists(listing, _, context) {
