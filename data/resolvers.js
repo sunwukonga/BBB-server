@@ -289,7 +289,10 @@ const resolvers = {
             '$Listing.userId$': context.userid
           },
           delRequestUserId: {
-            [Op.ne]: context.userid
+            [Op.or]: {
+              [Op.ne]: context.userid,
+              [Op.eq]: null
+            }
           }
         },
         include: [
@@ -299,7 +302,6 @@ const resolvers = {
             required: false
           },
         ],
-
       })
       .then( chats => {
         return chats.map( chat => {
