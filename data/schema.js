@@ -508,6 +508,7 @@ type Chat {
   initUser: User
   listing: Listing
   userId: Int
+  delRequestUserId: Int
   chatMessages: [ChatMessage]
   initUserAddress: String
   recUserAddress: String

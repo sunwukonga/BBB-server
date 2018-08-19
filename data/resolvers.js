@@ -288,6 +288,9 @@ const resolvers = {
             initUserId: context.userid,
             '$Listing.userId$': context.userid
           },
+          delRequestUserId: {
+            [Op.ne]: context.userid
+          }
         },
         include: [
           {
@@ -1468,7 +1471,16 @@ const resolvers = {
           listingId: listing.id
         }
       })
-      .then( chat => chat ? chat.id : 0 )
+      .then( chat => {
+        if ( chat ) {
+          if ( chat.delRequestUserId == context.userid ) {
+            // User has deleted this chat and doesn't want to hear about it.
+            return -1
+          }
+          return chat.id
+        }
+        return -1
+      })
     },
     /*
     chatExists(listing, _, context) {
