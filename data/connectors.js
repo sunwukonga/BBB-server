@@ -105,6 +105,7 @@ const UserModel = db.define('user', {
   firstName: { type: Sequelize.STRING },
   lastName: { type: Sequelize.STRING },
   profileName: { type: Sequelize.STRING },
+  nameChangeCount: { type: Sequelize.TINYINT , defaultValue: 1 },
   idVerification: { type: Sequelize.TINYINT , defaultValue: 1 },
   sellerRating: { type: Sequelize.TINYINT, defaultValue: 0 },
   sellerRatingCount: { type: Sequelize.INTEGER, defaultValue: 0 },

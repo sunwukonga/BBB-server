@@ -1068,6 +1068,70 @@ const resolvers = {
     images: [UploadedImage]
   ): Template */
 
+    setProfileImage(_, args, context) {
+      if (context.userid != "") {
+        if (args.image.deleted) {
+          // returns null on destroy
+          return destroyS3andInstanceByImageId( args.image.imageId )
+        } else {
+          // Get User and set Profile Image
+          return User.findOne({ where: { id: context.userid }})
+          .then( user => {
+            return user.setProfileImage( args.image.imageId )
+            .then( theUserAgain => {
+              return user.getProfileImage()
+            })
+          })
+        }
+      } else return null
+    },
+    deleteProfileImage(_, args, context) {
+      if (context.userid != "") {
+        return User.findOne({ where: {id: context.userid}})
+        .then( user => {
+          return user.getProfileImage()
+          .then( image => {
+            if ( image ) {
+              user.setProfileImage(null)
+              destroyS3andInstanceByImageId( image.id )
+            }
+            return user.getOauths()
+            .then( oauths => {
+              if (oauths.length > 0) {
+                return {
+                  imageURL: oauths[0].pictureURL
+                }
+              } else return null
+            })
+          })
+        })
+      } else return null
+    },
+
+    setProfileName(_, args, context) {
+      if (context.userid != "") {
+        return User.findOne({ where: {id: context.userid}})
+        .then( user => {
+          if ( user.nameChangeCount > 0 ) {
+            let name = args.profileName.replace(/[\W]+/g, "")
+            return User.findOne({ where: {profileName: name}})
+            .then( existing => {
+              if ( existing ) {
+                return '$'
+              } else {
+                user.profileName = name
+                user.nameChangeCount = 0
+                user.save()
+                return name
+              }
+            })
+          } else {
+            return '#'
+          }
+        })
+      } else return null
+    },
+
     incrementViewings(_, args, context) {
       return Listing.findOne({ where: { id: args.listingId }})
       .then( listing => {
@@ -1291,7 +1355,7 @@ const resolvers = {
                       return chatMessage.getImage()
                       .then( image => {
                         if (image) {
-                          return destroyS3andInstanceByImageId( chatMessage.id )
+                          return destroyS3andInstanceByImageId( image.id )
                         } else return null
                       })
                       .then( () => chatMessage.destroy({force: true}))

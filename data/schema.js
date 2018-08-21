@@ -137,6 +137,16 @@ type Mutation {
     lastMessageId: Int = 0
   ): [ChatMessage]
 
+  setProfileImage(
+    image: UploadedImage!
+  ): Image
+
+  deleteProfileImage: Image
+
+  setProfileName(
+    profileName: String!
+  ): String
+
   addCountry(
     isoCode: String!
     name: String!
