@@ -344,6 +344,7 @@ type User {
   firstName: String
   lastName: String
   profileName: String
+  nameChangeCount: Int
   profileImage: Image
   listings: [Listing]
   liked: [Listing]
