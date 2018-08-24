@@ -827,6 +827,44 @@ const resolvers = {
         return AWSS3.getSignedUrl( args )
       }
     },
+    deleteListing(_, args, context) {
+      if (context.userid !== "") {
+        return Listing.findOne({ where: { id: args.listingId }})
+        .then( listing => {
+          if ( listing.userId == context.userid ) {
+            //delete images associated with listing
+            // delete listing
+            for(var p in listing) {
+              if(typeof listing[p] === "function") {
+                console.log("Function name: ", p)
+              }
+            }
+            listing.getViews()
+            .then( views => {
+              listing.removeViews( views )
+            })
+            listing.getLike()
+            .then( likes => {
+              listing.removeLike( likes )
+            })
+            listing.getTags()
+            .then( tags => {
+              listing.removeTags( tags )
+            })
+            listing.getImages()
+            .then( images => {
+              images.map( image => {
+                destroyS3andInstanceByImageId( image.id )
+              })
+              listing.removeImages( images )
+            })
+            listing.destroy()
+            return true
+          } else return false
+        })
+      }
+      return false
+    },
     createListing(_, args, context) {
       let promiseCollection = []
       if (context.userid == "") {
@@ -1046,7 +1084,7 @@ const resolvers = {
                   return Promise.reject(new Error("User Error: listing: tags"))
                 })
                 .then( () => {
-                  return Promise.all( [countryPromise, categoryPromise, addListingsPromise, userPromise, templatePromise, salemodePromise].concat( promiseCollection ) )
+                  return Promise.all( [countryPromise, categoryPromise, add/istingsPromise, userPromise, templatePromise, salemodePromise].concat( promiseCollection ) )
                   .then( () => {
                     return listing.reload()
                   })

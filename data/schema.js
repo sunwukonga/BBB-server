@@ -93,7 +93,12 @@ type Mutation {
     templateId: Int
     tagIds: [Int]
     ): Listing
-  
+
+  # Will return false if user not set in Auth header OR user doesn't own listing
+  deleteListing(
+    listingId: Int!
+  ): Boolean
+
   # Flag a listing for deletion
   flagListingForDeletion(
     # This is the id of a Listing
@@ -101,7 +106,7 @@ type Mutation {
     # This is the reason for flagging the Listing, i.e. no response from seller, old, dishonest description
     reason: String
   ): Int
-  
+
   # Cancels deletion flag and confirs a three day protection 
   protectFromDeleteFlag(
     listingId: Int!
