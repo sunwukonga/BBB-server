@@ -1084,7 +1084,7 @@ const resolvers = {
                   return Promise.reject(new Error("User Error: listing: tags"))
                 })
                 .then( () => {
-                  return Promise.all( [countryPromise, categoryPromise, add/istingsPromise, userPromise, templatePromise, salemodePromise].concat( promiseCollection ) )
+                  return Promise.all( [countryPromise, categoryPromise, addListingsPromise, userPromise, templatePromise, salemodePromise].concat( promiseCollection ) )
                   .then( () => {
                     return listing.reload()
                   })
