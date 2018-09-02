@@ -1,5 +1,4 @@
 import Sequelize from 'sequelize';
-import casual from 'casual';
 import _ from 'lodash';
 import Mongoose from 'mongoose';
 import fetch from 'node-fetch';
@@ -7,6 +6,39 @@ import CryptoJS from 'crypto-js';
 import AWS from 'aws-sdk';
 import Categories from './constants/categories.js';
 import {loci, contentValues} from './constants/loci.js';
+import { createLogger, format, transports } from 'winston'
+
+const logger = createLogger({
+  level: 'info',
+  format: format.json(),
+  transports: [
+    new transports.File({ filename: 'error.log', level: 'error' }),
+    new transports.File({ filename: 'combined.log' })
+  ]
+});
+
+var db
+if (process.env.NODE_ENV !== 'production') {
+  db = new Sequelize('market', null, null, {
+    dialect: 'sqlite',
+    storage: './market.sqlite',
+    operatorsAliases: false,  // Gets rid of the warning.
+  })
+  logger.add(new transports.Console({
+    format: format.simple()
+  }))
+} else {
+  db = new Sequelize(
+    'bbb'
+  , process.env.RDS_USERNAME
+  , process.env.RDS_PASSWORD
+  , { dialect: 'postgres'
+    , host: process.env.RDS_HOSTNAME
+    , port: 3306
+    , logging: logger
+    }
+  )
+}
 
 const BBB_BUCKET = 'bbb-app-images';
 const FortuneCookie = {
@@ -95,11 +127,6 @@ const mongo = Mongoose.connect('mongodb://localhost/views', {
   useMongoClient: true
 });
 
-const db = new Sequelize('market', null, null, {
-  dialect: 'sqlite',
-  storage: './market.sqlite',
-  operatorsAliases: false,  // Gets rid of the warning.
-});
 
 const UserModel = db.define('user', {
   firstName: { type: Sequelize.STRING },
@@ -368,408 +395,311 @@ const OnlineSchema = Mongoose.Schema({
   online: Boolean,
 });
 
-// create mock data with a seed, so we always get the same
-casual.seed(123);
-db.sync({ force: true }).then(() => {
-  let lociPromises = loci.map( locus => LocusModel.create({ name: locus.name }) )
-  Promise.all( lociPromises )
-  .then( newLoci => {
-    let index = 0
-    loci.map( locus => {
-      let filteredParentLoci
-      if (locus.parentName) {
-        let parentLoci = newLoci.filter( locusModel => locusModel.parentName == locus.parentName)
-        if (locus.grandParentName) {
-          filteredParentLoci = parentLoci.filter( locusModel => locusModel.parentName = locus.grandParentName )
-          newLoci[index].setParent( filteredParentLoci[0] )
-        } else {
-          filteredParentLoci = parentLoci.filter( locusModel => locusModel.parentName == null )
-          newLoci[index].setParent( filteredParentLoci[0] )
-        }
-      } else {
-        // root element
-      }
-      index++
-    })
-  })
-  let tagOnePromise = TagModel.create({ name: "myTag0" });
-  let tagTwoPromise = TagModel.create({ name: "myTag1" });
- // let categories = Object.assign({}, Categories)
-  let rootCategoryPromise = CategoryModel.create({
-      name: 'root'
+db.sync({ logging: false }).then(() => {
+  let rootCategoryPromise = CategoryModel.findOrCreate({ where: { name: 'root' }})
+  .then( ([root, success]) => {
+    console.log("success: ", success)
+    if (success) {
+      let catPromises = Object.keys(Categories).map( catName => {
+        let subCatPromises = Object.keys(Categories[catName]).map( subCatName => {
+          return CategoryModel.create({
+            name: subCatName
+          })
+        })
+        return CategoryModel.create({
+          name: catName
+        })
+        .then( cat => {
+          return Promise.all(subCatPromises)
+          .then( subCats => {
+            return cat.setChildren( subCats )
+          })
+        })
+      }) // End first object map
+
+      return Promise.all( catPromises )
+      .then( cats => {
+        return root.setChildren( cats ).catch(e => console.log("---------------------------12-----------------------"))
+      })
+    } else {
+      return false
+    }
   })
   .then( root => {
-    let catPromises = Object.keys(Categories).map( catName => {
-      let subCatPromises = Object.keys(Categories[catName]).map( subCatName => {
-        return CategoryModel.create({
-          name: subCatName
-        })
+    console.log("root: ", root)
+    if (root) {
+      let engPromise = LanguageModel.create({
+          iso639_2: 'eng'
+        , name: 'English'
       })
-      return CategoryModel.create({
-        name: catName
+      let msaPromise = LanguageModel.create({
+          iso639_2: 'msa'
+        , name: 'Malay'
       })
-      .then( cat => {
-        return Promise.all(subCatPromises)
-        .then( subCats => {
-          return cat.setChildren( subCats )
-        })
+      let sgdPromise = CurrencyModel.create({
+          iso4217: 'SGD'
+        , currencyName: 'Singapore Dollar'
+        , currencySymbol: '$'
       })
-    }) // End first object map
+      let audPromise = CurrencyModel.create({
+          iso4217: 'AUD'
+        , currencyName: 'Australia Dollar'
+        , currencySymbol: '$'
+      })
+      let bndPromise = CurrencyModel.create({
+          iso4217: 'BND'
+        , currencyName: 'Brunei Darussalam Dollar'
+        , currencySymbol: '$'
+      })
+      let myrPromise = CurrencyModel.create({
+          iso4217: 'MYR'
+        , currencyName: 'Malaysia Ringgit'
+        , currencySymbol: 'RM'
+      })
+      let phpPromise = CurrencyModel.create({
+          iso4217: 'PHP'
+        , currencyName: 'Philippines Piso'
+        , currencySymbol: '₱'
+      })
+      let nzdPromise = CurrencyModel.create({
+          iso4217: 'NZD'
+        , currencyName: 'New Zealand Dollar'
+        , currencySymbol: '$'
+      })
+      let usdPromise = CurrencyModel.create({
+          iso4217: 'USD'
+        , currencyName: 'United States Dollar'
+        , currencySymbol: '$'
+      })
+      let gbpPromise = CurrencyModel.create({
+          iso4217: 'GBP'
+        , currencyName: 'United Kingdom Pound'
+        , currencySymbol: '£'
+      })
+      let idrPromise = CurrencyModel.create({
+          iso4217: 'IDR'
+        , currencyName: 'Indonesia Rupiah'
+        , currencySymbol: 'Rp'
+      })
+      let copPromise = CurrencyModel.create({
+          iso4217: 'COP'
+        , currencyName: 'Colombia Peso'
+        , currencySymbol: '$'
+      })
+      let eurPromise = CurrencyModel.create({
+          iso4217: 'EUR'
+        , currencyName: 'Euro Member Countries'
+        , currencySymbol: '€'
+      })
+      let tzsPromise = CurrencyModel.create({
+          iso4217: 'TZS'
+        , currencyName: 'Tanzania Shilling'
+        , currencySymbol: 'TSh'
+        // Note: It can be prepended.
+        //, symbolPrepend: false
+        // postpended, not prepended
+        // Symbol is sometimes 100/=
+      })
+      let rwfPromise = CurrencyModel.create({
+          iso4217: 'RWF'
+        , currencyName: 'Rwanda Franc'
+        , currencySymbol: 'FRw'
+      })
+      let kesPromise = CurrencyModel.create({
+          iso4217: 'KES'
+        , currencyName: 'Kenya Shilling'
+        , currencySymbol: 'KSh'
+      })
+      let cadPromise = CurrencyModel.create({
+          iso4217: 'CAD'
+        , currencyName: 'Canada Dollar'
+        , currencySymbol: '$'
+      })
+      let hkdPromise = CurrencyModel.create({
+          iso4217: 'HKD'
+        , currencyName: 'Hong Kong Dollar'
+        , currencySymbol: 'HK$'
+      })
 
-    return Promise.all( catPromises )
-    .then( cats => {
-      return root.setChildren( cats ).catch(e => console.log("---------------------------12-----------------------"))
-    })
-  })
-  let tagResultsPromise = Promise.all([tagOnePromise, tagTwoPromise, rootCategoryPromise])
-  .then( values => {
-    let [tag1, tag2, rootCategory] = values;
-    TemplateModel.create({ title: "myTemplate0", description: "My 0th template description" })
-    .then( template => {
-      template.addTag( tag1 )
-      template.setCategory( 14 );
-    });
-    TemplateModel.create({ title: "myTemplate1", description: "My 1st template description" })
-    .then( template => {
-      template.addTag( tag2 )
-      template.setCategory( 17 );
-    });
-  })
-  let engPromise = LanguageModel.create({
-      iso639_2: 'eng'
-    , name: 'English'
-  })
-  let msaPromise = LanguageModel.create({
-      iso639_2: 'msa'
-    , name: 'Malay'
-  })
-  let sgdPromise = CurrencyModel.create({
-      iso4217: 'SGD'
-    , currencyName: 'Singapore Dollar'
-    , currencySymbol: '$'
-  })
-  let audPromise = CurrencyModel.create({
-      iso4217: 'AUD'
-    , currencyName: 'Australia Dollar'
-    , currencySymbol: '$'
-  })
-  let bndPromise = CurrencyModel.create({
-      iso4217: 'BND'
-    , currencyName: 'Brunei Darussalam Dollar'
-    , currencySymbol: '$'
-  })
-  let myrPromise = CurrencyModel.create({
-      iso4217: 'MYR'
-    , currencyName: 'Malaysia Ringgit'
-    , currencySymbol: 'RM'
-  })
-  let phpPromise = CurrencyModel.create({
-      iso4217: 'PHP'
-    , currencyName: 'Philippines Piso'
-    , currencySymbol: '₱'
-  })
-  let nzdPromise = CurrencyModel.create({
-      iso4217: 'NZD'
-    , currencyName: 'New Zealand Dollar'
-    , currencySymbol: '$'
-  })
-  let usdPromise = CurrencyModel.create({
-      iso4217: 'USD'
-    , currencyName: 'United States Dollar'
-    , currencySymbol: '$'
-  })
-  let gbpPromise = CurrencyModel.create({
-      iso4217: 'GBP'
-    , currencyName: 'United Kingdom Pound'
-    , currencySymbol: '£'
-  })
-  let idrPromise = CurrencyModel.create({
-      iso4217: 'IDR'
-    , currencyName: 'Indonesia Rupiah'
-    , currencySymbol: 'Rp'
-  })
-  let copPromise = CurrencyModel.create({
-      iso4217: 'COP'
-    , currencyName: 'Colombia Peso'
-    , currencySymbol: '$'
-  })
-  let eurPromise = CurrencyModel.create({
-      iso4217: 'EUR'
-    , currencyName: 'Euro Member Countries'
-    , currencySymbol: '€'
-  })
-  let tzsPromise = CurrencyModel.create({
-      iso4217: 'TZS'
-    , currencyName: 'Tanzania Shilling'
-    , currencySymbol: 'TSh'
-    // Note: It can be prepended.
-    //, symbolPrepend: false
-    // postpended, not prepended
-    // Symbol is sometimes 100/=
-  })
-  let rwfPromise = CurrencyModel.create({
-      iso4217: 'RWF'
-    , currencyName: 'Rwanda Franc'
-    , currencySymbol: 'FRw'
-  })
-  let kesPromise = CurrencyModel.create({
-      iso4217: 'KES'
-    , currencyName: 'Kenya Shilling'
-    , currencySymbol: 'KSh'
-  })
-  let cadPromise = CurrencyModel.create({
-      iso4217: 'CAD'
-    , currencyName: 'Canada Dollar'
-    , currencySymbol: '$'
-  })
-  let hkdPromise = CurrencyModel.create({
-      iso4217: 'HKD'
-    , currencyName: 'Hong Kong Dollar'
-    , currencySymbol: 'HK$'
-  })
-
-  Promise.all([engPromise, sgdPromise, bndPromise, CountryModel.create({
-        isoCode: 'BN'
-      , name: 'Brunei'
-      , tld: 'bn'
-    })])
-  .then( values => {
-      let [eng, sgd, bnd, country] = values;
-      country.addLanguage(eng);
-      country.addCurrency(sgd);
-      country.addCurrency(bnd);
-  });
-  Promise.all([engPromise, myrPromise, CountryModel.create({
-        isoCode: 'MY'
-      , name: 'Malaysia'
-      , tld: 'my'
-    })
-  ])
-  .then( values => {
-      let [eng, myr, country] = values;
-      country.addLanguage(eng);
-      country.addCurrency(myr);
-  })
-  let singaporePromise = Promise.all([engPromise, sgdPromise, CountryModel.create({
-        isoCode: 'SG'
-      , name: 'Singapore'
-      , tld: 'sg'
-    })
-  ])
-  .catch(e => console.log("---------------------------14-----------------------"))
-  .then( values => {
-      let [eng, sgd, country] = values;
-      country.addLanguage(eng).catch(e => console.log("---------------------------15-----------------------"))
-      country.addCurrency(sgd).catch(e => console.log("---------------------------16-----------------------"))
-      return country
-  })
-  Promise.all([engPromise, phpPromise, CountryModel.create({
-        isoCode: 'PH'
-      , name: 'Philippines'
-      , tld: 'ph'
-    })
-  ])
-  .then( values => {
-      let [eng, php, country] = values;
-      country.addLanguage(eng);
-      country.addCurrency(php);
-  });
-  Promise.all([engPromise, audPromise, CountryModel.create({
-        isoCode: 'AU'
-      , name: 'Australia'
-      , tld: 'au'
-    })
-  ])
-  .then( values => {
-      let [eng, aud, country] = values;
-      country.addLanguage(eng);
-      country.addCurrency(aud);
-  });
-  Promise.all([engPromise, nzdPromise, CountryModel.create({
-        isoCode: 'NZ'
-      , name: 'New Zealand'
-      , tld: 'nz'
-    })
-  ])
-  .then( values => {
-      let [eng, nzd, country] = values;
-      country.addLanguage(eng);
-      country.addCurrency(nzd);
-  });
-  Promise.all([engPromise, usdPromise, CountryModel.create({
-        isoCode: 'US'
-      , name: 'USA'
-      , tld: 'us'
-    })
-  ])
-  .then( values => {
-      let [eng, usd, country] = values;
-      country.addLanguage(eng);
-      country.addCurrency(usd);
-  });
-  Promise.all([engPromise, gbpPromise, CountryModel.create({
-        isoCode: 'GB'
-      , name: 'United Kingdom'
-      , tld: 'uk'
-    })
-  ])
-  .then( values => {
-      let [eng, gbp, country] = values;
-      country.addLanguage(eng);
-      country.addCurrency(gbp);
-  });
-  Promise.all([engPromise, idrPromise, CountryModel.create({
-        isoCode: 'ID'
-      , name: 'Indonesia'
-      , tld: 'id'
-    })
-  ])
-  .then( values => {
-      let [eng, idr, country] = values;
-      country.addLanguage(eng);
-      country.addCurrency(idr);
-  });
-  Promise.all([engPromise, copPromise, CountryModel.create({
-        isoCode: 'CO'
-      , name: 'Colombia'
-      , tld: 'co'
-    })
-  ])
-  .then( values => {
-      let [eng, cop, country] = values;
-      country.addLanguage(eng);
-      country.addCurrency(cop);
-  });
-  Promise.all([engPromise, copPromise, CountryModel.create({
-        isoCode: 'NL'
-      , name: 'Netherlands'
-      , tld: 'nl'
-    })
-  ])
-  .then( values => {
-      let [eng, eur, country] = values;
-      country.addLanguage(eng);
-      country.addCurrency(eur);
-  });
-  Promise.all([engPromise, tzsPromise, CountryModel.create({
-        isoCode: 'TZ'
-      , name: 'Tanzania'
-      , tld: 'tz'
-    })
-  ])
-  .then( values => {
-      let [eng, tzs, country] = values;
-      country.addLanguage(eng);
-      country.addCurrency(tzs);
-  });
-  Promise.all([engPromise, rwfPromise, CountryModel.create({
-        isoCode: 'RW'
-      , name: 'Rwanda'
-      , tld: 'rw'
-    })
-  ])
-  .then( values => {
-      let [eng, rwf, country] = values;
-      country.addLanguage(eng);
-      country.addCurrency(rwf);
-  });
-  Promise.all([engPromise, kesPromise, CountryModel.create({
-        isoCode: 'KE'
-      , name: 'Kenya'
-      , tld: 'ke'
-    })
-  ])
-  .then( values => {
-      let [eng, kes, country] = values;
-      country.addLanguage(eng);
-      country.addCurrency(kes);
-  });
-  Promise.all([engPromise, cadPromise, CountryModel.create({
-        isoCode: 'CA'
-      , name: 'Canada'
-      , tld: 'ca'
-    })
-  ])
-  .then( values => {
-      let [eng, cad, country] = values;
-      country.addLanguage(eng);
-      country.addCurrency(cad);
-  });
-  Promise.all([engPromise, hkdPromise, CountryModel.create({
-        isoCode: 'HK'
-      , name: 'Hong Kong'
-      , tld: 'hk'
-    })
-  ])
-  .then( values => {
-      let [eng, hkd, country] = values;
-      country.addLanguage(eng);
-      country.addCurrency(hkd);
-  });
-  return Promise.all([singaporePromise, sgdPromise, tagResultsPromise])
-    .then ( values => {
-      let [singapore, sgd, tagResults] = values;
-    _.times(10, () => {
-      return UserModel.create({
-        firstName: casual.first_name,
-        lastName: casual.last_name,
-        profileName: casual.username,
-        idVerification: casual.integer(1, 5),
-        sellerRating: casual.integer(1, 6),
-        sellerRatingCount: casual.integer(0, 200)
-      }).then((user) => {
-        user.createProfileImage({imageURL: 'Images.Trollie'}).catch(e => console.log("---------------------------10-----------------------"))
-        let salePromise = SaleMode.create({
-            mode: "SALE"
-          , price: (Math.floor(casual.double(100, 1000)) / 100)
-          , counterOffer: casual.boolean
-        }).then( sale => {
-          return sale.setCurrency( sgd ).catch(e => console.log("---------------------------16-----------------------"))
-        }).catch(e => console.log("---------------------------9-----------------------"))
-        let listingPromise = user.createListing({
-          title: `A listing by ${user.firstName}`,
-          description: casual.sentences(3),
-        }).catch(e => console.log("---------------------------17-----------------------"))
-        return Promise.all([listingPromise, salePromise])
-          .then( (values) => {
-            let [listing, sale] = values;
-            listing.createImage({imageURL: 'Images.Trollie'}, { through: { primary: true }}).catch(e => console.log("---------------------------3-----------------------"))
-            listing.createImage({imageURL: 'Images.Trollie'}).catch(e => console.log("---------------------------4-----------------------"))
-            listing.setSaleMode( sale ).catch(e => console.log("---------------------------5-----------------------"))
-            listing.setTemplate( casual.integer(1,2) ).catch(e => console.log("---------------------------6-----------------------")) //relies on two templates created above.
-            listing.addTag( casual.integer(1,2) ).catch(e => console.log("---------------------------6.5-----------------------")) //relies on two templates created above.
-            listing.setCountry(singapore).catch(e => console.log("---------------------------7-----------------------"))
-            listing.setCategory( casual.integer(12, 40) ).catch(e => console.log("---------------------------8-----------------------" + e))
-            listing.setCountry(singapore).catch(e => console.log("---------------------------7-----------------------"))
-            listing.setCategory( casual.integer(12, 40) ).catch(e => console.log("---------------------------8-----------------------" + e))
-            // create some View mocks
-//            return View.update(
-//              { listingId: listing.id },
-//              { views: casual.integer(0, 100) },
-//              { upsert: true }
-            let userGenerator = shuffle(Array.from({length: 10}, (v, k) => k+1), user.id)
-            let ranUsers = []
-            for ( var i=0; i < Math.floor(Math.random() * 10); i++ ) {
-              ranUsers.push(userGenerator.next().value)
-            }
-            return listing.setViews( ranUsers, { through: { count: 1 }} ).catch(e => console.log("---------------------------2-----------------------"))
-//            return View.update(
-//              { listingId: listing.id },
-//              { countryCode: country.isoCode },
-//              { viewers: ranUsers },
-//              { upsert: true },
-            .then( () => {
-              singapore.addUser(user).catch(e => console.log("---------------------------1-----------------------"))
-              return OnlineStatus.update(
-                { userId: user.id },
-                { online: casual.boolean },
-                { upsert: true }
-              )
-            })
-            .catch( e => console.log("Error: " + e))
-          })
+      Promise.all([engPromise, sgdPromise, bndPromise, CountryModel.create({
+            isoCode: 'BN'
+          , name: 'Brunei'
+          , tld: 'bn'
+        })])
+      .then( values => {
+          let [eng, sgd, bnd, country] = values;
+          country.addLanguage(eng);
+          country.addCurrency(sgd);
+          country.addCurrency(bnd);
+      });
+      Promise.all([engPromise, myrPromise, CountryModel.create({
+            isoCode: 'MY'
+          , name: 'Malaysia'
+          , tld: 'my'
+        })
+      ])
+      .then( values => {
+          let [eng, myr, country] = values;
+          country.addLanguage(eng);
+          country.addCurrency(myr);
       })
-    })
+      let singaporePromise = Promise.all([engPromise, sgdPromise, CountryModel.create({
+            isoCode: 'SG'
+          , name: 'Singapore'
+          , tld: 'sg'
+        })
+      ])
+      .catch(e => console.log("---------------------------14-----------------------"))
+      .then( values => {
+          let [eng, sgd, country] = values;
+          country.addLanguage(eng).catch(e => console.log("---------------------------15-----------------------"))
+          country.addCurrency(sgd).catch(e => console.log("---------------------------16-----------------------"))
+          return country
+      })
+      Promise.all([engPromise, phpPromise, CountryModel.create({
+            isoCode: 'PH'
+          , name: 'Philippines'
+          , tld: 'ph'
+        })
+      ])
+      .then( values => {
+          let [eng, php, country] = values;
+          country.addLanguage(eng);
+          country.addCurrency(php);
+      });
+      Promise.all([engPromise, audPromise, CountryModel.create({
+            isoCode: 'AU'
+          , name: 'Australia'
+          , tld: 'au'
+        })
+      ])
+      .then( values => {
+          let [eng, aud, country] = values;
+          country.addLanguage(eng);
+          country.addCurrency(aud);
+      });
+      Promise.all([engPromise, nzdPromise, CountryModel.create({
+            isoCode: 'NZ'
+          , name: 'New Zealand'
+          , tld: 'nz'
+        })
+      ])
+      .then( values => {
+          let [eng, nzd, country] = values;
+          country.addLanguage(eng);
+          country.addCurrency(nzd);
+      });
+      Promise.all([engPromise, usdPromise, CountryModel.create({
+            isoCode: 'US'
+          , name: 'USA'
+          , tld: 'us'
+        })
+      ])
+      .then( values => {
+          let [eng, usd, country] = values;
+          country.addLanguage(eng);
+          country.addCurrency(usd);
+      });
+      Promise.all([engPromise, gbpPromise, CountryModel.create({
+            isoCode: 'GB'
+          , name: 'United Kingdom'
+          , tld: 'uk'
+        })
+      ])
+      .then( values => {
+          let [eng, gbp, country] = values;
+          country.addLanguage(eng);
+          country.addCurrency(gbp);
+      });
+      Promise.all([engPromise, idrPromise, CountryModel.create({
+            isoCode: 'ID'
+          , name: 'Indonesia'
+          , tld: 'id'
+        })
+      ])
+      .then( values => {
+          let [eng, idr, country] = values;
+          country.addLanguage(eng);
+          country.addCurrency(idr);
+      });
+      Promise.all([engPromise, copPromise, CountryModel.create({
+            isoCode: 'CO'
+          , name: 'Colombia'
+          , tld: 'co'
+        })
+      ])
+      .then( values => {
+          let [eng, cop, country] = values;
+          country.addLanguage(eng);
+          country.addCurrency(cop);
+      });
+      Promise.all([engPromise, copPromise, CountryModel.create({
+            isoCode: 'NL'
+          , name: 'Netherlands'
+          , tld: 'nl'
+        })
+      ])
+      .then( values => {
+          let [eng, eur, country] = values;
+          country.addLanguage(eng);
+          country.addCurrency(eur);
+      });
+      Promise.all([engPromise, tzsPromise, CountryModel.create({
+            isoCode: 'TZ'
+          , name: 'Tanzania'
+          , tld: 'tz'
+        })
+      ])
+      .then( values => {
+          let [eng, tzs, country] = values;
+          country.addLanguage(eng);
+          country.addCurrency(tzs);
+      });
+      Promise.all([engPromise, rwfPromise, CountryModel.create({
+            isoCode: 'RW'
+          , name: 'Rwanda'
+          , tld: 'rw'
+        })
+      ])
+      .then( values => {
+          let [eng, rwf, country] = values;
+          country.addLanguage(eng);
+          country.addCurrency(rwf);
+      });
+      Promise.all([engPromise, kesPromise, CountryModel.create({
+            isoCode: 'KE'
+          , name: 'Kenya'
+          , tld: 'ke'
+        })
+      ])
+      .then( values => {
+          let [eng, kes, country] = values;
+          country.addLanguage(eng);
+          country.addCurrency(kes);
+      });
+      Promise.all([engPromise, cadPromise, CountryModel.create({
+            isoCode: 'CA'
+          , name: 'Canada'
+          , tld: 'ca'
+        })
+      ])
+      .then( values => {
+          let [eng, cad, country] = values;
+          country.addLanguage(eng);
+          country.addCurrency(cad);
+      });
+      Promise.all([engPromise, hkdPromise, CountryModel.create({
+            isoCode: 'HK'
+          , name: 'Hong Kong'
+          , tld: 'hk'
+        })
+      ])
+      .then( values => {
+          let [eng, hkd, country] = values;
+          country.addLanguage(eng);
+          country.addCurrency(hkd);
+      })
+    } // End if check for root created
   })
 })
 
