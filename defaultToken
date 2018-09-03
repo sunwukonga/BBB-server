@@ -36,11 +36,11 @@ header='{
 # )
 
 payload='{
-  "userid": "",
-  "roles": [
+  "userid": ""
+, "roles": [
     "BARGAINER"
-  ],
-  "countryCode": "SG"
+  ]
+, "countryCode": "SG"
 }'
 
 base64_encode()

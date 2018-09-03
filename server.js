@@ -38,31 +38,32 @@ const engine = new Engine({
 engine.start();
 
 const graphQLServer = express();
+const adminJWT = expressJWT({ secret: process.env.JWT_ADMIN_SECRET_KEY })
+const normalJWT = expressJWT({ secret: process.env.JWT_SECRET_KEY })
+const token = jwt.sign({
+  "userid": "" 
+, "roles": [
+    "BARGAINER"
+  ]   
+, "countryCode": 'SG'
+}, process.env.JWT_SECRET_KEY, { noTimestamp: true } );
+
+const adminToken = jwt.sign({
+  "userid": "" 
+, "roles": [
+    "BARGAINER"
+  ]   
+, "countryCode": 'SG'
+}, process.env.JWT_ADMIN_SECRET_KEY, { noTimestamp: true } );
+console.log("token: ", token)
+console.log("AdminToken: ", adminToken)
 
 // This must be the first middleware
-graphQLServer.use(engine.expressMiddleware());
-graphQLServer.use(compression());
-//jwt takes authorization header and puts decoded token in req.user
-graphQLServer.use(
-  expressJWT({
-      secret: process.env.JWT_SECRET_KEY
-    , credentialsRequired: false
-  })
-  .unless({
-      path: ['/graphiql']
-  })
-);
-graphQLServer.use(
-  expressJWT({
-      secret: process.env.JWT_ADMIN_SECRET_KEY
-    , credentialsRequired: false
-  })
-  .unless({
-      path: ['/graphql']
-  })
-);
+graphQLServer.use(engine.expressMiddleware())
+graphQLServer.use(compression())
 graphQLServer.use(
     '/graphql'
+  , normalJWT
   , bodyParser.json()
   , graphqlExpress(req => {
       return {
@@ -76,7 +77,7 @@ graphQLServer.use(
             , countryCode: req.user.countryCode
           }
       };
-    }));
+    }))
 graphQLServer.use('/graphiql', graphiqlExpress({ endpointURL: '/graphql' }));
 
 graphQLServer.listen(GRAPHQL_PORT, () =>

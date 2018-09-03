@@ -34,8 +34,8 @@ if (process.env.NODE_ENV !== 'production') {
   , process.env.RDS_PASSWORD
   , { dialect: 'postgres'
     , host: process.env.RDS_HOSTNAME
-    , port: 3306
-    , logging: logger
+    , port: 5432
+    , logging: (msg) => logger.info(msg)
     }
   )
 }
@@ -132,9 +132,9 @@ const UserModel = db.define('user', {
   firstName: { type: Sequelize.STRING },
   lastName: { type: Sequelize.STRING },
   profileName: { type: Sequelize.STRING },
-  nameChangeCount: { type: Sequelize.TINYINT , defaultValue: 1 },
-  idVerification: { type: Sequelize.TINYINT , defaultValue: 1 },
-  sellerRating: { type: Sequelize.TINYINT, defaultValue: 0 },
+  nameChangeCount: { type: Sequelize.SMALLINT , defaultValue: 1 },
+  idVerification: { type: Sequelize.SMALLINT , defaultValue: 1 },
+  sellerRating: { type: Sequelize.SMALLINT, defaultValue: 0 },
   sellerRatingCount: { type: Sequelize.INTEGER, defaultValue: 0 },
   translatorWeight: { type: Sequelize.INTEGER, defaultValue: 1 },
   ratingWeight: { type: Sequelize.INTEGER, defaultValue: 1 },
