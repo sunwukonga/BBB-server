@@ -9,13 +9,27 @@ import {loci, contentValues} from './constants/loci.js';
 import { createLogger, format, transports } from 'winston'
 
 const logger = createLogger({
-  level: 'info',
+  level: 'silly',
   format: format.json(),
   transports: [
     new transports.File({ filename: 'error.log', level: 'error' }),
     new transports.File({ filename: 'combined.log' })
   ]
 });
+function getMethods(obj) {
+  var result = [];
+	for (var id in obj) {
+		try {
+		  if (typeof(obj[id]) == "function") {
+			result.push(id);
+		  }
+		} catch (err) {
+		  result.push(id + ": inaccessible");
+		}
+	}
+  return result;
+}
+console.log(getMethods(logger))
 
 var db
 if (process.env.NODE_ENV !== 'production') {
@@ -35,9 +49,15 @@ if (process.env.NODE_ENV !== 'production') {
   , { dialect: 'mysql'
     , host: process.env.RDS_HOSTNAME
     , port: 3306
-    , logging: (msg) => logger.info(msg)
+//    , logging: function(sql, sequelizeObject) {
+//	    logger.silly(sql)
+//	  }
+//	, operatorsAliases: false
     }
   )
+  logger.add(new transports.Console({
+    format: format.simple()
+  }))
 }
 
 const BBB_BUCKET = 'bbb-app-images';
@@ -198,7 +218,8 @@ const ContentModel = db.define('content', {
   meaning: { type: Sequelize.STRING },
   countryIsoCode: { type: Sequelize.STRING, unique: 'contentCountry' },
   // locuId seems to be the name sequelize is using.
-  locusId: { type: Sequelize.INTEGER, unique: 'contentCountry' },
+  // Commented out trying to remove foreign key constraint error
+//  locusId: { type: Sequelize.UUID, unique: 'contentCountry' },
 });
 const TranslationModel = db.define('translation', {
   text: { type: Sequelize.STRING },
@@ -207,7 +228,8 @@ const TranslationModel = db.define('translation', {
 const LocusModel = db.define('locus', {
   //name: { type: Sequelize.STRING, primaryKey: true },
   name: { type: Sequelize.STRING, unique: 'nameIndex' },
-  parentId: { type: Sequelize.INTEGER,  unique: 'nameIndex' },
+  // Commented out trying to remove foreign key constraint error
+//  parentId: { type: Sequelize.UUID,  unique: 'nameIndex' },
 });
 const RatingModel = db.define('rating', {
   good: { type: Sequelize.BOOLEAN },
@@ -271,11 +293,13 @@ const ListingViewsModel = db.define('listingViews', {
 });
 // Join table for BarterOptionModel and Template
 const BarterOptionTemplatesModel = db.define('barterOptionTemplates', {
+	/*
   id: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.UUID,
     primaryKey: true,
     autoIncrement: true
   },
+  */
   quantity: { type: Sequelize.INTEGER, allowNull: false, defaultValue: 1 },
 });
 // Join table for ListingModel and User (Views)
@@ -348,6 +372,7 @@ ChatMessageModel.belongsTo(ImageModel);
 ImageModel.hasMany(ChatMessageModel);
 ChatMessageModel.belongsTo(UserModel, {as: 'author'});
 
+/*
 // ------
 // I18n
 // ------
@@ -376,7 +401,7 @@ TranslationModel.hasMany(RatingModel, {as: 'Rating', foreignKey: 'translationId'
 RatingModel.belongsTo(TranslationModel)
 TranslationModel.hasMany(TranslationModel, {as: 'Edit', foreignKey: 'parentId'})
 TranslationModel.belongsTo(TranslationModel, {as: 'parent'})
-
+*/
 
 // SaleMode Model
 //

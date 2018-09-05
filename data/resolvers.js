@@ -282,12 +282,13 @@ const resolvers = {
     getChatMessages(_, args, context) {
       // Note: this returns chats, filtering the chat messages occurs at another step.
             //Sequelize.literal("`listing`.`userId` = " + context.userid)
+            //'$Listing.userId$': context.userid
       return Chat.findAll({
         where: {
-          [Op.or]: {
-            initUserId: context.userid,
-            '$Listing.userId$': context.userid
-          },
+          [Op.or]: [
+		    { initUserId: context.userid },
+			Sequelize.literal("`listing`.`userId` = " + context.userid)
+          ],
           delRequestUserId: {
             [Op.or]: {
               [Op.ne]: context.userid,
