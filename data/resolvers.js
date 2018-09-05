@@ -769,26 +769,26 @@ const resolvers = {
                       throw new Error("Email created, but user already existed! Possible duplicate facebook name. Try a different login provider.");
                     }
 
-                    user.addEmail(email).then( () => {
+                    return user.addEmail(email).then( () => {
                       console.log("Add Email and Oauth to user");
-                      user.addOauth(auth);
+                      return user.addOauth(auth)
+                      .then( () => user )
                     })
-                    return user
                   })
                 }
                 console.log("User created");
-                user.addEmail(email).then( () => {
+                return user.addEmail(email).then( () => {
                   console.log("Add Email and Oauth to user");
-                  user.addOauth(auth);
+                  return user.addOauth(auth)
+                  .then( () => user )
                 })
-                return user
               })
             } else {
               // Email existed. Therefore it SHOULD be linked to an existing User. Link oauth to this user.
               return User.findOne({ where: { id: email.userId }})
               .then( user => {
-                user.addOauth(auth);
-                return user
+                return user.addOauth(auth)
+               .then( () => user )
               })
             }
           }).then( user => {
@@ -804,7 +804,7 @@ const resolvers = {
             }
             return {
               token: jwt.sign( JSON.stringify(userToken), process.env.JWT_SECRET_KEY )
-            , userid: user.id
+            , user: user
             }
           })
         } else {
@@ -812,7 +812,7 @@ const resolvers = {
               "userid": oauth.userId
             , "role": [
                 {
-                   "name": "GENERAL"
+                   "name": "BARGAINER"
                 }
               ]
           }
@@ -1713,7 +1713,13 @@ const resolvers = {
   },
   LogStatus: {
     user( logStatus ) {
-      return User.findById( logStatus.userid )
+      if (logStatus.userid) {
+        return User.findById( logStatus.userid )
+      }
+      if (logStatus.user) {
+        console.log("unicorn")
+        return user
+      }
     }
   },
   Locus: {
