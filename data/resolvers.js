@@ -1717,8 +1717,7 @@ const resolvers = {
         return User.findById( logStatus.userid )
       }
       if (logStatus.user) {
-        console.log("unicorn")
-        return user
+        return logStatus.user
       }
     }
   },
