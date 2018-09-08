@@ -1,8 +1,10 @@
+/*
 import dotenv from 'dotenv';
 if (process.env.NODE_ENV !== 'production') {
   // In production, the production environment should control these variables.
-  dotenv.config();
+  dotenv.config()
 }
+*/
 import express from 'express';
 import { graphqlExpress, graphiqlExpress } from 'apollo-server-express';
 import bodyParser from 'body-parser';

@@ -29,20 +29,9 @@ function getMethods(obj) {
 	}
   return result;
 }
-console.log(getMethods(logger))
+//console.log(getMethods(logger))
 
-var db
-if (process.env.NODE_ENV !== 'production') {
-  db = new Sequelize('market', null, null, {
-    dialect: 'sqlite',
-    storage: './market.sqlite',
-    operatorsAliases: false,  // Gets rid of the warning.
-  })
-  logger.add(new transports.Console({
-    format: format.simple()
-  }))
-} else {
-  db = new Sequelize(
+var db = new Sequelize(
     'bbb'
   , process.env.RDS_USERNAME
   , process.env.RDS_PASSWORD
@@ -54,11 +43,10 @@ if (process.env.NODE_ENV !== 'production') {
 //	  }
 //	, operatorsAliases: false
     }
-  )
-  logger.add(new transports.Console({
-    format: format.simple()
-  }))
-}
+)
+logger.add(new transports.Console({
+  format: format.simple()
+}))
 
 const BBB_BUCKET = 'bbb-app-images';
 const FortuneCookie = {
@@ -80,12 +68,12 @@ const Facebook = {
 };
 
 function createOpaqueUniqueImageKey(imageId) {
-    let imageString = imageId.toString()
+  let imageString = imageId.toString()
   imageString.padStart(10, '0')
   const key = CryptoJS.enc.Hex.parse("6162636431323334");
   const iv = CryptoJS.enc.Hex.parse("696e707574766563");
-    const encrypted = CryptoJS.DES.encrypt(imageString, key,  { iv: iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7  });
-    return encrypted.ciphertext.toString();
+  const encrypted = CryptoJS.DES.encrypt(imageString, key,  { iv: iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7  });
+  return encrypted.ciphertext.toString();
 }
 
 AWS.config.update({ accessKeyId: process.env.S3_USER_KEY_ID, secretAccessKey: process.env.S3_USER_SECRET_KEY, region: 'ap-southeast-1' })
@@ -94,49 +82,49 @@ const s3 = new AWS.S3();
 const AWSS3 = {
   getSignedUrl( args ) {
     return ImageModel.create({})
-    .then( image => {
-      return new Promise((resolve, reject) => {
-        let uniqKey = createOpaqueUniqueImageKey(image.id)
-        s3.createPresignedPost({
+      .then( image => {
+        return new Promise((resolve, reject) => {
+          let uniqKey = createOpaqueUniqueImageKey(image.id)
+          s3.createPresignedPost({
             Bucket: BBB_BUCKET
             , Conditions: [
-               ["content-length-range", 0, 262144],
-           //    [ "eq", "$acl", "public-read" ]
+              ["content-length-range", 0, 262144],
+              //    [ "eq", "$acl", "public-read" ]
             ]
             , Fields: {
               key: uniqKey
             }
             , ContentType: args.imageType
           },
-          function(err, data) {
-            if (err) {
-              console.error('Presigning post data encountered an error', err);
-              reject(err)
-            } else {
-              image.imageKey = data.fields.key;
-              image.imageUrl = "https://s3-ap-southeast-1.amazonaws.com/bbb-app-images/" + data.fields.key
-              image.save();
-              console.log("data: ", data)
-              resolve({
+            function(err, data) {
+              if (err) {
+                console.error('Presigning post data encountered an error', err);
+                reject(err)
+              } else {
+                image.imageKey = data.fields.key;
+                image.imageUrl = "https://s3-ap-southeast-1.amazonaws.com/bbb-app-images/" + data.fields.key
+                image.save();
+                console.log("data: ", data)
+                resolve({
                   id: image.id
-                , key: data.fields.key
-                , bucket: data.fields.bucket
-                , X_Amz_Algorithm: data.fields['X-Amz-Algorithm']
-                , X_Amz_Credential: data.fields['X-Amz-Credential']
-                , X_Amz_Date: data.fields['X-Amz-Date']
-                , policy: data.fields.Policy
-                , X_Amz_Signature: data.fields['X-Amz-Signature']
-              })
-            }
+                  , key: data.fields.key
+                  , bucket: data.fields.bucket
+                  , X_Amz_Algorithm: data.fields['X-Amz-Algorithm']
+                  , X_Amz_Credential: data.fields['X-Amz-Credential']
+                  , X_Amz_Date: data.fields['X-Amz-Date']
+                  , policy: data.fields.Policy
+                  , X_Amz_Signature: data.fields['X-Amz-Signature']
+                })
+              }
+            })
         })
       })
-    })
   },
   async deleteObject( key ) {
     return await s3.deleteObject({
-        Bucket: BBB_BUCKET,
-        Key: key
-      });
+      Bucket: BBB_BUCKET,
+      Key: key
+    });
   },
 };
 
@@ -149,114 +137,114 @@ const mongo = Mongoose.connect('mongodb://localhost/views', {
 
 
 const UserModel = db.define('user', {
-  firstName: { type: Sequelize.STRING },
-  lastName: { type: Sequelize.STRING },
-  profileName: { type: Sequelize.STRING },
+  firstName: { type: Sequelize.STRING(35).BINARY },
+  lastName: { type: Sequelize.STRING(35).BINARY },
+  profileName: { type: Sequelize.STRING(76).BINARY },
   nameChangeCount: { type: Sequelize.SMALLINT , defaultValue: 1 },
   idVerification: { type: Sequelize.SMALLINT , defaultValue: 1 },
   sellerRating: { type: Sequelize.SMALLINT, defaultValue: 0 },
   sellerRatingCount: { type: Sequelize.INTEGER, defaultValue: 0 },
   translatorWeight: { type: Sequelize.INTEGER, defaultValue: 1 },
   ratingWeight: { type: Sequelize.INTEGER, defaultValue: 1 },
-  token: { type: Sequelize.STRING },
+  token: { type: Sequelize.STRING(191).BINARY },
 });
 
 const ListingModel = db.define('listing', {
-  title: { type: Sequelize.STRING },
-  description: { type: Sequelize.STRING },
+  title: { type: Sequelize.STRING(50).BINARY },
+  description: { type: Sequelize.STRING(191).BINARY },
 });
 
 const SaleModeModel = db.define('salemode', {
-  mode: { type: Sequelize.STRING },
+  mode: { type: Sequelize.STRING(10).BINARY },
   price: { type: Sequelize.FLOAT },
   counterOffer: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false },
 });
 
 const TemplateModel = db.define('template', {
-  title: { type: Sequelize.STRING },
-  description: { type: Sequelize.STRING },
+  title: { type: Sequelize.STRING(50).BINARY },
+  description: { type: Sequelize.STRING(191).BINARY },
 });
 
 const TagModel = db.define('tag', {
-  name: { type: Sequelize.STRING },
+  name: { type: Sequelize.STRING(32).BINARY },
 });
 
 const ChatModel = db.define('chat', {
-  initUserAddress: { type: Sequelize.STRING },
-  recUserAddress: { type: Sequelize.STRING },
+  initUserAddress: { type: Sequelize.STRING(191).BINARY },
+  recUserAddress: { type: Sequelize.STRING(191).BINARY },
 },{
   timestamps: true
 });
 
 const ChatMessageModel = db.define('chatmessage', {
-  message: { type: Sequelize.STRING },
+  message: { type: Sequelize.STRING(191).BINARY },
 });
 
 const CountryModel = db.define('country', {
-  isoCode: { type: Sequelize.STRING, primaryKey: true },
-  name: { type: Sequelize.STRING },
-  tld: { type: Sequelize.STRING },
+  isoCode: { type: Sequelize.STRING(3).BINARY, primaryKey: true },
+  name: { type: Sequelize.STRING(32).BINARY },
+  tld: { type: Sequelize.STRING(2).BINARY },
   disabled: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false },
 });
 // TODO: Link language and currency to CountryModel
 const LanguageModel = db.define('language', {
-  iso639_2: { type: Sequelize.STRING, primaryKey: true },
-  name: { type: Sequelize.STRING },
+  iso639_2: { type: Sequelize.STRING(3).BINARY, primaryKey: true },
+  name: { type: Sequelize.STRING(32).BINARY },
   disabled: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false },
 });
 const CurrencyModel = db.define('currency', {
-  iso4217: { type: Sequelize.STRING, primaryKey: true },
-  currencyName: { type: Sequelize.STRING },
-  currencySymbol: { type: Sequelize.STRING },
+  iso4217: { type: Sequelize.STRING(3).BINARY, primaryKey: true },
+  currencyName: { type: Sequelize.STRING(32).BINARY },
+  currencySymbol: { type: Sequelize.STRING(3).BINARY },
   symbolPrepend: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: true },
   disabled: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false },
 });
 const CategoryModel = db.define('category', {
-  name: { type: Sequelize.STRING },
+  name: { type: Sequelize.STRING(32).BINARY },
 });
 const ContentModel = db.define('content', {
-  meaning: { type: Sequelize.STRING },
-  countryIsoCode: { type: Sequelize.STRING, unique: 'contentCountry' },
+  meaning: { type: Sequelize.STRING(191).BINARY },
+  countryIsoCode: { type: Sequelize.STRING(3).BINARY, unique: 'contentCountry' },
   // locuId seems to be the name sequelize is using.
   // Commented out trying to remove foreign key constraint error
 //  locusId: { type: Sequelize.UUID, unique: 'contentCountry' },
 });
 const TranslationModel = db.define('translation', {
-  text: { type: Sequelize.STRING },
+  text: { type: Sequelize.STRING(191).BINARY },
   aggRating: { type: Sequelize.INTEGER },
 });
 const LocusModel = db.define('locus', {
-  //name: { type: Sequelize.STRING, primaryKey: true },
-  name: { type: Sequelize.STRING, unique: 'nameIndex' },
+  //name: { type: Sequelize.STRING(191).BINARY, primaryKey: true },
+  name: { type: Sequelize.STRING(36).BINARY, unique: 'nameIndex' },
   // Commented out trying to remove foreign key constraint error
 //  parentId: { type: Sequelize.UUID,  unique: 'nameIndex' },
 });
 const RatingModel = db.define('rating', {
   good: { type: Sequelize.BOOLEAN },
   weight: { type: Sequelize.INTEGER },
-  comment: { type: Sequelize.STRING },
+  comment: { type: Sequelize.STRING(191).BINARY },
 });
 const LocationModel = db.define('location', {
   latitude: { type: Sequelize.FLOAT },
   longitude: { type: Sequelize.FLOAT },
-  lineOne: { type: Sequelize.STRING },
-  lineTwo: { type: Sequelize.STRING },
-  postcode: { type: Sequelize.STRING },
-  description: { type: Sequelize.STRING },
+  lineOne: { type: Sequelize.STRING(40).BINARY },
+  lineTwo: { type: Sequelize.STRING(40).BINARY },
+  postcode: { type: Sequelize.STRING(10).BINARY },
+  description: { type: Sequelize.STRING(191).BINARY },
 });
 
 const EmailModel = db.define('email', {
-  email: { type: Sequelize.STRING },
+  email: { type: Sequelize.STRING(191).BINARY },
   primary: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false },
   verified: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false },
   //TODO: probably needs a verification code to match against.
 });
 const OauthModel = db.define('oauth', {
-  provider: { type: Sequelize.STRING, allowNull: false },
-  uid: { type: Sequelize.STRING, allowNull: false },
-  name: { type: Sequelize.STRING },
-  email: { type: Sequelize.STRING },
-  pictureURL: { type: Sequelize.STRING },
+  provider: { type: Sequelize.STRING(12).BINARY, allowNull: false },
+  uid: { type: Sequelize.STRING(128).BINARY, allowNull: false },
+  name: { type: Sequelize.STRING(191).BINARY },
+  email: { type: Sequelize.STRING(191).BINARY },
+  pictureURL: { type: Sequelize.STRING(191).BINARY },
 });
 
 const BarterOptionModel = db.define('barterOption', {
@@ -270,13 +258,13 @@ const BarterOptionModel = db.define('barterOption', {
   */
 });
 const ExchangeModeModel = db.define('exchangeMode', {
-  mode: { type: Sequelize.STRING }, //F2F or Post
+  mode: { type: Sequelize.STRING(4).BINARY }, //F2F or Post
   price: { type: Sequelize.FLOAT },
 });
 // Later associate images with templates
 const ImageModel = db.define('image', {
-  imageURL: { type: Sequelize.STRING },
-  imageKey: { type: Sequelize.STRING },
+  imageURL: { type: Sequelize.STRING(191).BINARY },
+  imageKey: { type: Sequelize.STRING(16).BINARY },
   // flagging
   // ratings
   // author
