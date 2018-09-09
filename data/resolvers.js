@@ -659,7 +659,7 @@ const resolvers = {
         offset: (args.page - 1) * args.limit,
         limit: args.limit,
       }
-      console.log("whereBlock: " + Object.values(whereBlock))
+      //console.log("whereBlock: " + Object.values(whereBlock))
       if ( Object.keys(whereBlock).length !== 0 ) {
         optionBlock.where = whereBlock
       }
@@ -715,7 +715,7 @@ const resolvers = {
       var auth;
       return Facebook.login( args )
       .then( res => {
-        console.log(res);
+        //console.log(res);
         names = res.name.split(' ');
         if ( (typeof res.email == "undefined") || (! /@/g.test(res.email)) ) {
           throw new Error("Oauth provider did not supply email. Login aborted.");
@@ -732,7 +732,7 @@ const resolvers = {
       })
       .then( ([oauth, oauthCreated]) => {
         if (oauthCreated) {
-          console.log("Oauth record was created.");
+          //console.log("Oauth record was created.");
       auth = oauth;
           return Email.findOrCreate({
               where: { email: oauth.email }
@@ -744,7 +744,7 @@ const resolvers = {
             if (emailCreated) {
               // Email didn't exist, therefore no user existed. Create new.
               // In future, need to check user context.userid
-              console.log("Email didn't exist AND was created");
+              //console.log("Email didn't exist AND was created");
               var nickname = names.join('');
               var lastName = names.pop();
               var firstName = names.join(' ');
@@ -770,15 +770,15 @@ const resolvers = {
                     }
 
                     return user.addEmail(email).then( () => {
-                      console.log("Add Email and Oauth to user");
+                      //console.log("Add Email and Oauth to user");
                       return user.addOauth(auth)
                       .then( () => user )
                     })
                   })
                 }
-                console.log("User created");
+                //console.log("User created");
                 return user.addEmail(email).then( () => {
-                  console.log("Add Email and Oauth to user");
+                  //console.log("Add Email and Oauth to user");
                   return user.addOauth(auth)
                   .then( () => user )
                 })
@@ -792,8 +792,8 @@ const resolvers = {
               })
             }
           }).then( user => {
-            console.log("Attempting to access user to create jwt token");
-            console.log(user);
+            //console.log("Attempting to access user to create jwt token");
+            //console.log(user);
             let userToken = {
                 "userid": user.id
               , "role": [
@@ -835,11 +835,11 @@ const resolvers = {
           if ( listing.userId == context.userid ) {
             //delete images associated with listing
             // delete listing
-            for(var p in listing) {
-              if(typeof listing[p] === "function") {
-                console.log("Function name: ", p)
-              }
-            }
+            // for(var p in listing) {
+            //   if(typeof listing[p] === "function") {
+            //     console.log("Function name: ", p)
+            //   }
+            // }
             listing.getViews()
             .then( views => {
               listing.removeViews( views )
@@ -889,7 +889,7 @@ const resolvers = {
           throw new Error("Couldn't find the currency you were looking for.");
         })
         promiseCollection.push( currencyPromise )
-        console.log("SaleMode created");
+        //console.log("SaleMode created");
         if (args.mode ==  Modes.Sale || args.mode == Modes.SaleBarter) {
           if (args.barterTemplates && args.barterTemplates.length > 0) {
             let barterPromises = args.barterTemplates.map( barterOptionsData => {
@@ -899,7 +899,7 @@ const resolvers = {
                   return Template.findOne({ where: { id: barterOptionData.templateId }})
                   .then( template => {
                     if (!template) {
-                      console.log("barterTemplates: invalid templateId supplied");
+                      //console.log("barterTemplates: invalid templateId supplied");
                       return Promise.reject(new Error("barterTemplates: invalid templateId. ", { invalidArgs: barterOptionDate.templateId }))
                     }
                     return barterOption.addTemplate(template, { through: { quantity: barterOptionData.quantity }})
@@ -910,7 +910,7 @@ const resolvers = {
                           Tag.findOne({ where: { id: tagId }})
                           .then( tag => {
                             if (!tag) {
-                              console.log("User Error> barterTemplates: tags: invalid tagId supplied");
+                              //console.log("User Error> barterTemplates: tags: invalid tagId supplied");
                               return Promise.reject(new Error("barterTemplates: tags: invalid tagId. ", { invalidArgs: tagId }))
                             } else {
                               return tag
@@ -941,14 +941,14 @@ const resolvers = {
           } //END IF --> barterTemplates has values
         } //END IF --> Sale mode or Sale & Barter mode
         if (args.post) {
-          console.log("___________________________________________")
-          console.log("Entering post method")
-          console.log("___________________________________________")
+          //console.log("___________________________________________")
+          //console.log("Entering post method")
+          //console.log("___________________________________________")
           // Postage
           let exchangeModePromise = ExchangeMode.create({ mode: Modes.Post })
             .then( exMode => {
               if (!exMode) {
-                console.log("Internal Error> ExchangeMode: create");
+                //console.log("Internal Error> ExchangeMode: create");
                 return Promise.reject(new Error("Internal Error: ExchangeMode: create.", { invalidArgs: Modes.Post }))
               } else {
                 return exMode
@@ -957,7 +957,7 @@ const resolvers = {
           let currencyPromise = Currency.findOne({ where: { iso4217: args.post.postCurrency }})
             .then( postCurrency => {
               if (!postCurrency) {
-                console.log("User Error> postCurrency");
+                //console.log("User Error> postCurrency");
                 return Promise.reject(new Error("User Error: postCurrency", { invalidArgs: args.post.postCurrency }))
               } else {
                 return postCurrency
@@ -965,9 +965,9 @@ const resolvers = {
             })
           let postPromises = Promise.all([exchangeModePromise, currencyPromise])
           .then( values => {
-            console.log("___________________________________________")
-            console.log("VALUES 1: " + values)
-            console.log("___________________________________________")
+            //console.log("___________________________________________")
+            //console.log("VALUES 1: " + values)
+            //console.log("___________________________________________")
             let [exchangeMode, currency] = values;
             exchangeMode.setCurrency( currency )
             .then( () => {
@@ -978,7 +978,7 @@ const resolvers = {
               return mode.addExchangeMode( exchangeMode )
               .then( addExchangeMode => {
                 if (!addExchangeMode) {
-                  console.log("Internal Error> mode.addExchangeMode");
+                  //console.log("Internal Error> mode.addExchangeMode");
                   return Promise.reject(new Error("Internal Error: mode.addExchangeMode"))
                 } else {
                   return addExchangeMode
@@ -990,9 +990,9 @@ const resolvers = {
         }
 
         if (args.address) {
-          console.log("___________________________________________")
-          console.log("Entering ftf method")
-          console.log("___________________________________________")
+          //console.log("___________________________________________")
+          //console.log("Entering ftf method")
+          //console.log("___________________________________________")
           // Face to face
           let submittedAddress = {}
           if (args.address.lat && args.address.long) {
@@ -1179,7 +1179,7 @@ const resolvers = {
           if (view.length == 0) {
             return listing.addViews( context.userid )
             .then( view => {
-              console.log("Top-TEST: " + JSON.stringify( view ))
+              //console.log("Top-TEST: " + JSON.stringify( view ))
               return 1
             })
           }
@@ -1383,7 +1383,7 @@ const resolvers = {
               }
               else {
                 // No previous attempt to delete chat
-                console.log("Virgin attempt at deleting chat")
+                //console.log("Virgin attempt at deleting chat")
                 return chat.setDelRequestUser( context.userid )
                 .then( () => {
                   return chat.getChatmessages({
@@ -1440,7 +1440,8 @@ const resolvers = {
                     return image.countChatmessage()
                     .then( noOfImages => {
                       if (noOfImages <= 1) {
-                        console.log( AWS.deleteObject( args.image.imageKey ) )
+                        //console.log( AWS.deleteObject( args.image.imageKey ) )
+                        AWS.deleteObject( args.image.imageKey )
                         return image.destroy()
                       }
                     })
@@ -1487,7 +1488,8 @@ const resolvers = {
                 return image.countChatmessage()
                 .then( noOfImages => {
                   if ( noOfImages <= 1 ) {
-                    console.log( AWS.deleteObject( image.imageKey ) )
+                    AWS.deleteObject( image.imageKey )
+                    //console.log( AWS.deleteObject( image.imageKey ) )
                     return image.destroy()
                   }
                 })
@@ -1793,7 +1795,8 @@ const destroyS3andInstanceByImageId = (imageId) => {
     return image.countChatmessages()
     .then( noOfImages => {
       if (noOfImages == 1) {
-        console.log( AWS.deleteObject( image.imageKey ) )
+        //console.log( AWS.deleteObject( image.imageKey ) )
+        AWS.deleteObject( image.imageKey )
         return image.destroy({force: true})
         .then( () => null )
       }
