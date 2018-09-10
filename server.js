@@ -83,7 +83,11 @@ graphQLServer.use(
       };
     }))
 graphQLServer.use('/graphiql', normalJWT, graphiqlExpress({ endpointURL: '/graphql' }));
-
+graphQLServer.use(function (err, req, res, next) {
+  if (err.name === 'UnauthorizedError') {
+    res.status(200).send({ errors: [{code: 209, message: "Invalid Token." }]})
+  }
+});
 graphQLServer.listen(GRAPHQL_PORT, () =>
   console.log(
     `GraphiQL is now running on http://localhost:${GRAPHQL_PORT}/graphiql`
