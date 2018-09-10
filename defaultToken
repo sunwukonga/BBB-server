@@ -43,7 +43,11 @@ payload='{
   ]
 , "countryCode": "SG"
 }'
-payload=$( echo "${payload}" | jq --arg user $userId '.userid=$user' )
+
+re='^[0-9]+$'
+if [[ $userId =~ $re ]] ; then
+  payload=$( echo "${payload}" | jq --arg user $userId '.userid=$user' )
+fi
 
 base64_encode()
 {

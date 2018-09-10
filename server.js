@@ -42,6 +42,7 @@ engine.start();
 const graphQLServer = express();
 const adminJWT = expressJWT({ secret: process.env.JWT_ADMIN_SECRET_KEY })
 const normalJWT = expressJWT({ secret: process.env.JWT_SECRET_KEY })
+	/*
 const token = jwt.sign({
   "userid": "" 
 , "roles": [
@@ -59,14 +60,15 @@ const adminToken = jwt.sign({
 }, process.env.JWT_ADMIN_SECRET_KEY, { noTimestamp: true } );
 console.log("token: ", token)
 console.log("AdminToken: ", adminToken)
+*/
 
 // This must be the first middleware
 graphQLServer.use(engine.expressMiddleware())
 graphQLServer.use(compression())
 graphQLServer.use(
     '/graphql'
-  , normalJWT
   , bodyParser.json()
+  , normalJWT
   , graphqlExpress(req => {
       return {
           schema: schema
@@ -80,7 +82,7 @@ graphQLServer.use(
           }
       };
     }))
-graphQLServer.use('/graphiql', graphiqlExpress({ endpointURL: '/graphql' }));
+graphQLServer.use('/graphiql', normalJWT, graphiqlExpress({ endpointURL: '/graphql' }));
 
 graphQLServer.listen(GRAPHQL_PORT, () =>
   console.log(
