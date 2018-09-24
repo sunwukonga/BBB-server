@@ -649,7 +649,7 @@ db.sync({ logging: false }).then(() => {
           country.addLanguage(eng);
           country.addCurrency(cop);
       });
-      Promise.all([engPromise, copPromise, CountryModel.create({
+      Promise.all([engPromise, eurPromise, CountryModel.create({
             isoCode: 'NL'
           , name: 'Netherlands'
           , tld: 'nl'
