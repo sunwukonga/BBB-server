@@ -833,38 +833,38 @@ const resolvers = {
         return Listing.findOne({ where: { id: args.listingId }})
         .then( listing => {
           if (listing) {
-			  if ( listing.userId == context.userid ) {
-				//delete images associated with listing
-				// delete listing
-				/*
-				for(var p in listing) {
-				  if(typeof listing[p] === "function") {
-					console.log("Function name: ", p)
-				  }
-				}
-				*/
-				listing.getViews()
-				.then( views => {
-				  listing.removeViews( views )
-				})
-				listing.getLike()
-				.then( likes => {
-				  listing.removeLike( likes )
-				})
-				listing.getTags()
-				.then( tags => {
-				  listing.removeTags( tags )
-				})
-				listing.getImages()
-				.then( images => {
-				  images.map( image => {
-					destroyS3andInstanceByImageId( image.id )
-				  })
-				  listing.removeImages( images )
-				})
-				listing.destroy()
-				return true
-			  } else throw new Error("Not this user's listing to delete!")
+            if ( listing.userId == context.userid ) {
+            //delete images associated with listing
+            // delete listing
+            /*
+            for(var p in listing) {
+              if(typeof listing[p] === "function") {
+              console.log("Function name: ", p)
+              }
+            }
+            */
+              listing.getViews()
+              .then( views => {
+                listing.removeViews( views )
+              })
+              listing.getLike()
+              .then( likes => {
+                listing.removeLike( likes )
+              })
+              listing.getTags()
+              .then( tags => {
+                listing.removeTags( tags )
+              })
+              listing.getImages()
+              .then( images => {
+                images.map( image => {
+                destroyS3andInstanceByImageId( image.id )
+                })
+                listing.removeImages( images )
+              })
+              listing.destroy()
+              return true
+            } else throw new Error("Not this user's listing to delete!")
           } else throw new Error("Listing did not exist!")
         })
       }
