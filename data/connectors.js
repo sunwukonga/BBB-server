@@ -68,13 +68,13 @@ const Facebook = {
 };
 
 function createOpaqueUniqueImageKey(imageId) {
-  let imageString = imageId.toString()
-  imageString.padStart(10, '0')
-  if (process.env.NODE_ENV === "dev") {
-    imageString.padStart(11, 'd')
-  }
   const key = CryptoJS.enc.Hex.parse("6162636431323334");
   const iv = CryptoJS.enc.Hex.parse("696e707574766563");
+
+  let imageString = imageId.toString().padStart(10, '0')
+  if (process.env.NODE_ENV === "dev") {
+    imageString = imageId.toString().padStart(9, '0').padStart(10, 'd')
+  }
   const encrypted = CryptoJS.DES.encrypt(imageString, key,  { iv: iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7  });
   return encrypted.ciphertext.toString();
 }
@@ -267,7 +267,7 @@ const ExchangeModeModel = db.define('exchangeMode', {
 // Later associate images with templates
 const ImageModel = db.define('image', {
   imageURL: { type: Sequelize.STRING(191).BINARY },
-  imageKey: { type: Sequelize.STRING(16).BINARY },
+  imageKey: { type: Sequelize.STRING(32).BINARY },
   // flagging
   // ratings
   // author
