@@ -71,7 +71,7 @@ function createOpaqueUniqueImageKey(imageId) {
   let imageString = imageId.toString()
   imageString.padStart(10, '0')
   if (process.env.NODE_ENV === "dev") {
-    imageString.padStart(1, 'd')
+    imageString.padStart(11, 'd')
   }
   const key = CryptoJS.enc.Hex.parse("6162636431323334");
   const iv = CryptoJS.enc.Hex.parse("696e707574766563");
