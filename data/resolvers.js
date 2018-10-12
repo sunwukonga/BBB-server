@@ -1319,44 +1319,51 @@ const resolvers = {
       .then( oldChat => {
         if (!oldChat) {
 		*/
-          return Chat.findOrCreate({
+      return Chat.findOrCreate({
 			where: {
 					 initUserId: context.userid
 				   , listingId: args.listingId
 				   }
 			 
 		  })
-          .then( (chatArray, created) => {
-			let chat = chatArray[0]
-			if (created) {
-				let senderPromise = User.find({
-				  where: { id: context.userid }
-				})
-				let listingPromise = Listing.find({
-				  where: { id: args.listingId }
-				})
-				return Promise.all([senderPromise, listingPromise])
-				.then( values => {
-				  let [sender, listing] = values;
-				  if (!sender) {
-					chat.destroy({ force: true })
-					throw new Error("Sending user not found. This is probably an Authorization header problem.");
-				  }
-				  if (!listing) {
-					chat.destroy({ force: true })
-					throw new Error("Listing not found.");
-				  }
-				  if (listing.userId == sender.id) {
-					chat.destroy({ force: true })
-					return Promise.reject( new Error("You cannot initiate a chat about your own listing!"))
-				  }
-				  return Promise.all([chat.setInitUser(sender), chat.setListing(listing)])
-				  then( () => chat)
-				})
-		    } else {
-			  return chat
-			}
+      .then( (chatArray, created) => {
+        let chat = chatArray[0]
+        let senderPromise = User.find({
+          where: { id: context.userid }
+        })
+        if (created) {
+          let listingPromise = Listing.find({
+            where: { id: args.listingId }
           })
+          return Promise.all([senderPromise, listingPromise])
+          .then( values => {
+            let [sender, listing] = values;
+            if (!sender) {
+              chat.destroy({ force: true })
+              throw new Error("Sending user not found. This is probably an Authorization header problem.");
+            }
+            if (!listing) {
+              chat.destroy({ force: true })
+              throw new Error("Listing not found.");
+            }
+            if (listing.userId == sender.id) {
+              chat.destroy({ force: true })
+              return Promise.reject( new Error("You cannot initiate a chat about your own listing!"))
+            }
+            return Promise.all([chat.setInitUser(sender), chat.setListing(listing)])
+            then( () => chat)
+          })
+        } else {
+          return senderPromise.then( sender => {
+            if (chat.delRequestUserId == sender.id) {
+              // previously deleted chat. Reconstitute.
+              chat.delRequestUserId = null
+              chat.save()
+            }
+            return chat
+          })
+        }
+      })
 		  /*
         } else {
           return Promise.reject( new Error("Chat already exists!"))
