@@ -1000,8 +1000,8 @@ const resolvers = {
           // Face to face
           let submittedAddress = {}
           if (args.address.lat && args.address.long) {
-            submittedAddress.lat = args.address.lat
-            submittedAddress.long = args.address.long
+            submittedAddress.latitude = args.address.lat
+            submittedAddress.longitude = args.address.long
           }
           if (args.address.lineOne)
             submittedAddress.lineOne = args.address.lineOne

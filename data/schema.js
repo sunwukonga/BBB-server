@@ -389,8 +389,8 @@ type Location {
   lineOne: String
   lineTwo: String
   postcode: String
-  long: Float
-  lat: Float
+  longitude: Float
+  latitude: Float
   directions: String
 }
 
