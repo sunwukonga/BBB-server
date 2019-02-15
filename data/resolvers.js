@@ -1686,7 +1686,6 @@ const resolvers = {
     },
     languages(country) {
       return country.getLanguage()
-      .then( languages => languages.map( lang => lang.name ));
     },
   },
   Category: {
