@@ -28,6 +28,7 @@
     "nodemon": "^1.18.3",
     "pg": "^7.4.3",
     "sequelize": "^4.28.2",
+    "sequelize-cli": "^5.4.0",
     "signal-exit": "^3.0.2",
     "sqlite": "^2.9.0",
     "winston": "^3.0.0"

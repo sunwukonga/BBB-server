@@ -119,17 +119,16 @@ const resolvers = {
         .catch( e => Promise.reject(new Error("Possible User Error: check id. Error: " + e.message)))
     },
 /*
-  # For SUPER + ADMIN returns most highly rated
-  # For other roles, returns most highly rated, unless content has been added by calling user.
-  getContent(
+  getLocus(
     locusId: Int!
     countryCode: String!
     languageCodes: [String]!
-    preferMyContent: Boolean = true
+    cascade: Boolean = true
+    preferMyContent: Boolean
   ): [Locus]
   */
 
-    getContent(_, args, context) {
+    getLocus(_, args, context) {
       return Locus.findById( args.locusId )
     },
     getMostRecentListings(_, args, context) {
@@ -283,11 +282,14 @@ const resolvers = {
       // Note: this returns chats, filtering the chat messages occurs at another step.
             //Sequelize.literal("`listing`.`userId` = " + context.userid)
             //'$Listing.userId$': context.userid
+      if (!context.userid) {
+        return []
+      }
       return Chat.findAll({
         where: {
           [Op.or]: [
-		    { initUserId: context.userid },
-			Sequelize.literal("`listing`.`userId` = " + context.userid)
+        { initUserId: context.userid },
+      Sequelize.literal("`listing`.`userId` = " + context.userid)
           ],
           delRequestUserId: {
             [Op.or]: {
@@ -1309,7 +1311,7 @@ const resolvers = {
       })
     },
     createChat(_, args, context) {
-		/*
+    /*
       return Chat.find({
         where: {
                  initUserId: context.userid
@@ -1318,14 +1320,14 @@ const resolvers = {
       })
       .then( oldChat => {
         if (!oldChat) {
-		*/
+    */
       return Chat.findOrCreate({
-			where: {
-					 initUserId: context.userid
-				   , listingId: args.listingId
-				   }
-			 
-		  })
+      where: {
+           initUserId: context.userid
+           , listingId: args.listingId
+           }
+       
+      })
       .then( (chatArray, created) => {
         let chat = chatArray[0]
         let senderPromise = User.find({
@@ -1364,12 +1366,12 @@ const resolvers = {
           })
         }
       })
-		  /*
+      /*
         } else {
           return Promise.reject( new Error("Chat already exists!"))
         }
       })
-		*/
+    */
     },
     deleteChat(_, args, context) {
       return Chat.findById( args.chatId )
@@ -1692,6 +1694,9 @@ const resolvers = {
     children(category) {
       return category.getChildren();
     },
+    locus(category) {
+      return category.getLocus();
+    },
   },
   Chat: {
     initUser(chat) {
@@ -1751,37 +1756,61 @@ const resolvers = {
     }
   },
   Locus: {
-    children(locus, args, context) {
-      if (args.cascade) {
+    children(locus, args, context, info) {
+      if (!info.variableValues.noCascade) {
         return locus.getChildren()
       }
     },
-    content(locus, args, content) {
+    content(locus, args, context, info) {
       //WHATROLEAMI
-      if (context.roles.includes(Roles.Super) || context.roles.includes(Roles.Admin)) {
+      console.log("Context: ", context)
+//      if (context.roles.includes(Roles.Super) || context.roles.includes(Roles.Admin)) {
         // Never return personal content in the stead of popular content
         // Unless args.preferMyContent == true
-        if (args.preferMyContent && args.preferMyContent == true) {
-
+        if (info.variableValues.preferMyContent && info.variableValues.preferMyContent == true) {
+          //TODO
         } else {
-          locus.getContent({
-            include: [
+          return locus.getContent({
+            where: {
+              countryCode: {
+                [Op.or]: {
+                  [Op.eq]: info.variableValues.countryCode
+                , [Op.eq]: null
+                }
+              }
+            }
+          , include: [
+            /*
               {
                   model: Country
-                , where: { countryCode: { [Op.in]: [ args.countryCode, null ] }}
-                , required: true
+                , where: { isoCode: info.variableValues.countryCode }
+                , required: false
               },
+              */
               {
                   model: Translation
-                , where: { iso639_2: { [Op.in]: args.languageCodes }}
+                , where: { iso639_2: { [Op.in]: info.variableValues.languageCodes }}
+          /*
                 , attributes: [
                     [Sequelize.fn('MAX', Sequelize.col('aggRating')), 'highest']
                   ]
+                  */
+                  /*
                 , through: {
-                    group: ['country.countryCode'],
+                    group: ['country.isoCode'],
                   }
+                  */
+                , required: false
+              }
+            ]
+          })
+        }
+      //}
+    },
 
-                /*
+  },
+            /*
+                //here got opening comment
                 , include: [
                     {
                         model: Translation
@@ -1794,16 +1823,8 @@ const resolvers = {
                       , required: true
                     }
                   ]
-                  */
-                , required: true
-              }
-            ]
-          })
-        }
-      }
-    },
-
-  },
+                 // here got closing comment
+            */
   /*
     countryCode: String!
     languageCodes: [String]!

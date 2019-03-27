@@ -1,179 +1,140 @@
 const loci = [
-    { name: 'App'
-    , parentName: null
-    , grandParentName: null
-    }
-  , { name: 'CategoryScreen'
-    , parentName: 'App'
-    , grandParentName: null
-    }
-  , { name: 'ChatScreen'
-    , parentName: 'App'
-    , grandParentName: null
-    }
-  , { name: 'DrawerContainer'
-    , parentName: 'App'
-    , grandParentName: null
-    }
-  , { name: 'HomeScreen'
-    , parentName: 'App'
-    , grandParentName: null
-    }
-  , { name: 'ProductDetailsScreen'
-    , parentName: 'App'
-    , grandParentName: null
-    }
-  , { name: 'SettingScreen'
-    , parentName: 'App'
-    , grandParentName: null
-    }
-  , { name: 'ChatDetailScreen'
-    , parentName: 'App'
-    , grandParentName: null
-    }
-  , { name: 'CountryScreen'
-    , parentName: 'App'
-    , grandParentName: null
-    }
-  , { name: 'FavoriteScreen'
-    , parentName: 'App'
-    , grandParentName: null
-    }
-  , { name: 'LoginScreen'
-    , parentName: 'App'
-    , grandParentName: null
-    }
-  , { name: 'ProfileScreen'
-    , parentName: 'App'
-    , grandParentName: null
-    }
-  , { name: 'StrollersScreen'
-    , parentName: 'App'
-    , grandParentName: null
-    }
-  , { name: 'ChatListScreen'
-    , parentName: 'App'
-    , grandParentName: null
-    }
-  , { name: 'CreateNewItemScreen'
-    , parentName: 'App'
-    , grandParentName: null
-    }
-  , { name: 'FilterScreen'
-    , parentName: 'App'
-    , grandParentName: null
-    }
-  , { name: 'NotificationScreen'
-    , parentName: 'App'
-    , grandParentName: null
-    }
-  , { name: 'SearchResultScreen'
-    , parentName: 'App'
-    , grandParentName: null
-    }
-  , { name: 'SupportScreen'
-    , parentName: 'App'
-    , grandParentName: null
-    }
-  , { name: 'Countries'
-    , parentName: 'App'
-    , grandParentName: null
-    }
-  , { name: 'Categories'
-    , parentName: 'App'
-    , grandParentName: null
-    }
-  , { name: 'Title'
-    , parentName: 'HomeScreen'
-    , grandParentName: 'App'
-    }
-  , { name: 'SearchSuggestion'
-    , parentName: 'HomeScreen'
-    , grandParentName: 'App'
-    }
-  , { name: 'MostLiked'
-    , parentName: 'HomeScreen'
-    , grandParentName: 'App'
-    }
-  , { name: 'MostRecent'
-    , parentName: 'HomeScreen'
-    , grandParentName: 'App'
-    }
-  , { name: 'MostVisited'
-    , parentName: 'HomeScreen'
-    , grandParentName: 'App'
-    }
-  , { name: 'UserMostVisited'
-    , parentName: 'HomeScreen'
-    , grandParentName: 'App'
-    }
-  , { name: 'UserMostLiked'
-    , parentName: 'HomeScreen'
-    , grandParentName: 'App'
-    }
-  , { name: 'UserPosted'
-    , parentName: 'HomeScreen'
-    , grandParentName: 'App'
-    }
-  , { name: 'Question'
-    , parentName: 'HomeScreen'
-    , grandParentName: 'App'
-    }
-  , { name: 'Suggestion'
-    , parentName: 'HomeScreen'
-    , grandParentName: 'App'
-    }
-  , { name: 'Title'
-    , parentName: 'LoginScreen'
-    , grandParentName: 'App'
-    }
-  , { name: 'Connect'
-    , parentName: 'LoginScreen'
-    , grandParentName: 'App'
-    }
-  , { name: 'Title'
-    , parentName: 'CategoryScreen'
-    , grandParentName: 'App'
-    }
-]
-
-
-const contentValues = [
-    { meaning: "Do you have something to sell or give away?"
-    , locus: {
-        name: 'Question'
-      , parentName: 'HomeScreen'
+  { name: 'App'
+  , children: [
+      { name: 'CategoryScreen'
+      , children: [
+          { name: 'Title'
+          , children: []
+          }
+        ]
       }
-    , translations: [
-        { iso639_2: 'eng'
-        , translatorId: 1
-        , text: "Do you have something to sell or give away?"
-        }
-      , { iso639_2: 'msa'
-        , translatorId: 1
-        , text: "Anda ada barang untuk dijual atau diberi?"
-        }
-      ]
-    }
-  , { meaning: "Post it with us and we'll give you an audience."
-    , locus: {
-        name: 'Suggestion'
-      , parentName: 'HomeScreen'
+    , { name: 'ChatScreen'
+      , children: []
       }
-    , translations: [
-        { iso639_2: 'eng'
-        , translatorId: 1
-        , text: "Post it with us and we'll give you an audience."
-        }
-      , { iso639_2: 'msa'
-        , translatorId: 1
-        , text: "Poskan di laman web kami dan kami akan sebarkan."
-        }
-      ]
-    }
+    , { name: 'OwnListingsScreen'
+      , children: []
+      }
+    , { name: 'AboutUsScreen'
+      , children: []
+      }
+    , { name: 'DrawerContainer'
+      , children: [
+          { name: 'Home'
+          , children: []
+          }
+        , { name: 'Chat'
+          , children: []
+          }
+        , { name: 'YourListings'
+          , children: []
+          }
+        , { name: 'Favorites'
+          , children: []
+          }
+        , { name: 'AboutUs'
+          , children: []
+          }
+        , { name: 'Support'
+          , children: []
+          }
+        , { name: 'LogOut'
+          , children: []
+          }
+        ]
+      }
+    , { name: 'HomeScreen'
+      , children: [
+          { name: 'Title'
+          , children: []
+          }
+        , { name: 'SearchSuggestion'
+          , children: []
+          }
+        , { name: 'MostLiked'
+          , children: []
+          }
+        , { name: 'MostRecent'
+          , children: []
+          }
+        , { name: 'MostVisited'
+          , children: []
+          }
+        , { name: 'UserMostVisited'
+          , children: []
+          }
+        , { name: 'UserMostLiked'
+          , children: []
+          }
+        , { name: 'UserPosted'
+          , children: []
+          }
+        , { name: 'QuestionSell'
+          , children: []
+          }
+        , { name: 'SuggestionPost'
+          , children: []
+          }
+        ]
+      }
+    , { name: 'ProductDetailsScreen'
+      , children: []
+      }
+    , { name: 'SettingScreen'
+      , children: []
+      }
+    , { name: 'ChatDetailScreen'
+      , children: []
+      }
+    , { name: 'CountryScreen'
+      , children: []
+      }
+    , { name: 'FavoriteScreen'
+      , children: []
+      }
+    , { name: 'LoginScreen'
+      , children: [
+        , { name: 'Title'
+          , children: []
+          }
+        , { name: 'Connect'
+          , children: []
+          }
+        ]
+      }
+    , { name: 'ProfileScreen'
+      , children: []
+      }
+    , { name: 'StrollersScreen'
+      , children: []
+      }
+    , { name: 'ChatListScreen'
+      , children: []
+      }
+    , { name: 'CreateNewItemScreen'
+      , children: []
+      }
+    , { name: 'FilterScreen'
+      , children: []
+      }
+    , { name: 'NotificationScreen'
+      , children: []
+      }
+    , { name: 'SearchResultScreen'
+      , children: []
+      }
+    , { name: 'SupportScreen'
+      , children: []
+      }
+    , { name: 'Countries'
+      , children: []
+      }
+    , { name: 'CategoriesRoot'
+      , children: []
+      }
+    ]
+	}
 ]
 
 export {
     loci
-  , contentValues
 }

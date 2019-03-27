@@ -45,16 +45,15 @@ type Query {
   getUserLikedListings(countryCode: String!, limit: Int = 20, page: Int = 1): [Listing]
   getUserPostedListings(countryCode: String!, limit: Int = 20, page: Int = 1): [Listing]
 
-  # For SUPER + ADMIN returns most highly rated
-  # For other roles, returns most highly rated, unless content has been added by calling user.
-  getContent(
+  # For SUPER + ADMIN returns most highly rated (Not implemented)
+  # For other roles, returns most highly rated, unless content has been added by calling user. (Not implemented)
+  getLocus(
     locusId: Int!
     countryCode: String!
     languageCodes: [String]!
-    cascade: Boolean = true
+    noCascade: Boolean = false
     preferMyContent: Boolean
-  ): [Locus]
-
+  ): Locus
 
 }
 
@@ -409,6 +408,7 @@ type Image {
 type Category {
   id: Int
   name: String
+  locus: Locus
   children: [Category]
 }
 
@@ -437,7 +437,7 @@ type BarterOption {
 type Locus {
   id: Int
   name: String!
-  parentId: Int!
+  parentName: String
   children: [Locus]
   content: [Content]
 }
@@ -447,8 +447,7 @@ type Content {
   meaning: String!
   author: User
   authorId: Int
-  country: Country
-  countryId: Int
+  countryCode: String
   translations: [Translation]
   ratings: [Rating]
 }
@@ -456,7 +455,7 @@ type Content {
 type Translation {
   id: Int
   text: String!
-  languageId: String!
+  iso639_2: String!
   translatorId: Int!
   contentId: Int
   ratings: [Rating]
