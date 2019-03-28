@@ -892,7 +892,7 @@ db.sync({ logging: false }).then(() => {
         })
       )
       countryPromises.push(
-        Promise.all([engPromise, copPromise, CountryModel.findOrCreate({
+        Promise.all([engPromise, spaPromise, copPromise, CountryModel.findOrCreate({
           where: {
             isoCode: 'CO'
           , name: 'Colombia'
@@ -900,9 +900,11 @@ db.sync({ logging: false }).then(() => {
           }
         })])
         .then( values => {
-          let [[eng, engCreated], [cop, copCreated], [country, created]] = values;
+          let [[eng, engCreated], [spa, spaCreated], [cop, copCreated], [country, created]] = values;
           country.hasLanguage(eng)
           .then( exists => !exists && country.addLanguage(eng).catch(e => console.log("Colombia:ENG:add: ", e.message)) )
+          country.hasLanguage(spa)
+          .then( exists => !exists && country.addLanguage(spa).catch(e => console.log("Colombia:SPA:add: ", e.message)) )
           country.hasCurrency(cop)
           .then( exists => !exists && country.addCurrency(cop).catch(e => console.log("Colombia:COP:add: ", e.message)) )
           return country
